@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+label,
+div {
+  user-select: none;
+}
