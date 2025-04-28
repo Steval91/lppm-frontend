@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+html {
+  font-size: 14px;
+}
+
 label,
 div {
   user-select: none;
