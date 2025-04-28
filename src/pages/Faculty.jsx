@@ -104,6 +104,8 @@ const Faculty = () => {
       message: `Hapus fakultas ${faculty.facultyName}?`,
       header: "Konfirmasi",
       icon: "pi pi-exclamation-triangle",
+      acceptLabel: "Ya",
+      rejectLabel: "Tidak",
       accept: () => deleteFaculty(faculty.id),
     });
   };

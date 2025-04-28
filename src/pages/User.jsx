@@ -205,6 +205,8 @@ const User = () => {
       message: `Hapus pengguna ${user.username}?`,
       header: "Konfirmasi",
       icon: "pi pi-exclamation-triangle",
+      acceptLabel: "Ya",
+      rejectLabel: "Tidak",
       accept: () => deleteUser(user.id),
     });
   };
