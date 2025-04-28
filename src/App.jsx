@@ -31,9 +31,10 @@ const App = () => {
         <Route index element={<Dashboard />} />
         <Route path="proposals" element={<Proposal />} />
         <Route path="users" element={<User />} />
-        {/* <Route path="faculties" element={<Faculty />} /> */}
-        {/* <Route path="proposals" element={<FacultyHeadDashboard />} /> */}
-        {/* <Route path="proposals" element={<DekanDashboard />} /> */}
+        <Route path="faculties" element={<Faculty />} />
+        <Route path="facultyHead" element={<FacultyHeadDashboard />} />
+        <Route path="reviewer" element={<ReviewerDashboard />} />
+        <Route path="dekan" element={<DekanDashboard />} />
       </Route>
     </Routes>
   );
