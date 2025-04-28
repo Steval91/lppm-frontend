@@ -39,9 +39,9 @@ const ProfileDropdown = () => {
         {/* <Avatar image="https://i.pravatar.cc/40" shape="circle" /> */}
         <div className="flex-1 text-left">
           <Tooltip target=".email" />
-          <div className="font-medium text-sm">Reviewer</div>
+          <div className="font-medium text-md">Reviewer</div>
           <div
-            className="text-xs text-gray-500 truncate max-w-[150px] block email"
+            className="text-sm text-gray-500 truncate max-w-[150px] block email"
             data-pr-tooltip="admin@example.com"
           >
             dosen@example.com
