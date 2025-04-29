@@ -3,63 +3,85 @@ import { useNavigate } from "react-router-dom";
 import { InputText } from "primereact/inputtext";
 import { Password } from "primereact/password";
 import { Button } from "primereact/button";
-import { login } from "../utils/auth";
+import { loginApi } from "../api/auth";
+import { useAuth } from "../contexts/AuthContext";
 
 const Login = () => {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [form, setForm] = useState({ username: "", password: "" });
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState(""); // NEW
+  const { setUser, setNotifications } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogin = async () => {
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setErrorMessage("");
     try {
-      const res = await fetch("http://localhost:3000/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || "Login gagal");
-      }
-
-      const { token } = await res.json();
-      login(token);
+      const { user, notifications } = await loginApi(
+        form.username,
+        form.password
+      );
+      setUser(user);
+      setNotifications(notifications || []); // kalau kosong, tetap []
       navigate("/");
-    } catch (err) {
-      setError(err.message);
+    } catch (error) {
+      console.error("Login gagal:", error);
+      setErrorMessage("Nama Pengguna atau Kata Sandi salah.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="flex justify-center items-center h-screen bg-gray-100">
-      <div className="w-md p-6 shadow-xl rounded-2xl bg-white">
-        <h2 className="text-xl text-center font-bold mb-5">LOGIN</h2>
-
-        <div className="mb-5">
-          <label>Nama Pengguna</label>
-          <InputText
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="w-full p-inputtext-sm"
+      <div className="p-6 rounded-lg shadow-xl w-md bg-white">
+        <h2 className="text-2xl font-bold mb-6 text-center">LOGIN</h2>
+        {errorMessage && (
+          <div className="mb-4 text-red-500 text-center">{errorMessage}</div>
+        )}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div>
+            <label htmlFor="username" className="block mb-1 font-semibold">
+              Username
+            </label>
+            <InputText
+              id="username"
+              name="username"
+              value={form.username}
+              onChange={handleChange}
+              className="w-full"
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor="password" className="block mb-1 font-semibold">
+              Password
+            </label>
+            <Password
+              id="password"
+              name="password"
+              value={form.password}
+              onChange={handleChange}
+              className="w-full"
+              inputClassName="w-full"
+              feedback={false}
+              // toggleMask
+              required
+            />
+          </div>
+          <Button
+            type="submit"
+            label={loading ? "Logging in..." : "Login"}
+            className="w-full"
+            disabled={loading}
           />
-        </div>
-
-        <div className="mb-5">
-          <label>Kata Sandi</label>
-          <Password
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            feedback={false}
-            className="w-full p-inputtext-sm"
-            inputClassName="w-full"
-          />
-        </div>
-
-        {error && <div className="text-red-500 text-sm mb-2">{error}</div>}
-
-        <Button label="Login" onClick={handleLogin} className="w-full" />
+        </form>
       </div>
     </div>
   );

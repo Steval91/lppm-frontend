@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { PrimeReactProvider } from "primereact/api";
 import App from "./App.jsx";
+import { AuthProvider } from "./contexts/AuthContext"; // Tambah ini
 
 import "./index.css";
 import "primereact/resources/themes/lara-light-indigo/theme.css";
@@ -13,7 +14,9 @@ createRoot(document.getElementById("root")).render(
   <StrictMode>
     <PrimeReactProvider>
       <BrowserRouter>
-        <App />
+        <AuthProvider>
+          <App />
+        </AuthProvider>
       </BrowserRouter>
     </PrimeReactProvider>
   </StrictMode>

@@ -1,6 +1,6 @@
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import { isAuthenticated } from "./utils/auth";
+import ProtectedRoute from "./routes/ProtectedRoute";
 import MainLayout from "./layout/MainLayout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -10,11 +10,6 @@ import Faculty from "./pages/Faculty";
 import FacultyHeadDashboard from "./pages/FacultyHeadDashboard";
 import ReviewerDashboard from "./pages/ReviewerDashboard";
 import DekanDashboard from "./pages/DekanDashboard";
-
-const ProtectedRoute = ({ children }) => {
-  if (isAuthenticated()) return <Navigate to="/login" />;
-  return children;
-};
 
 const App = () => {
   return (
@@ -36,6 +31,8 @@ const App = () => {
         <Route path="reviewer" element={<ReviewerDashboard />} />
         <Route path="dekan" element={<DekanDashboard />} />
       </Route>
+      {/* Redirect unknown routes to login or dashboard */}
+      <Route path="*" element={<Navigate to="/" replace />} />{" "}
     </Routes>
   );
 };
