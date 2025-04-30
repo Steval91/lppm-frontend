@@ -9,9 +9,20 @@ import { useNavigate } from "react-router-dom";
 const ProfileDropdown = () => {
   const menuRef = useRef(null);
   const { user, logout } = useAuth();
-  const username =
-    user?.userType === "DOSEN_STAFF" ? user?.dosen.name : user?.student.name;
   const navigate = useNavigate();
+
+  let username = "";
+
+  if (user?.userType === "DOSEN_STAFF") {
+    const roleNames = user.roles?.map((role) => role.name);
+    if (roleNames?.includes("ADMIN")) {
+      username = user.username;
+    } else {
+      username = user.dosen?.name;
+    }
+  } else if (user?.userType === "STUDENT") {
+    username = user.student?.name;
+  }
 
   const items = [
     {

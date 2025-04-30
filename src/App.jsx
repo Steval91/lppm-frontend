@@ -1,6 +1,7 @@
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./routes/ProtectedRoute";
+import AdminRoute from "./routes/AdminRoute";
 import MainLayout from "./layout/MainLayout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -25,8 +26,22 @@ const App = () => {
       >
         <Route index element={<Dashboard />} />
         <Route path="proposals" element={<Proposal />} />
-        <Route path="users" element={<User />} />
-        <Route path="faculties" element={<Faculty />} />
+        <Route
+          path="users"
+          element={
+            <AdminRoute>
+              <User />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="faculties"
+          element={
+            <AdminRoute>
+              <Faculty />
+            </AdminRoute>
+          }
+        />
         <Route path="facultyHead" element={<FacultyHeadDashboard />} />
         <Route path="reviewer" element={<ReviewerDashboard />} />
         <Route path="dekan" element={<DekanDashboard />} />
