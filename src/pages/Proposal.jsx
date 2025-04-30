@@ -1,5 +1,16 @@
 import { React, useEffect, useState, useMemo, useRef } from "react";
-import axios from "axios";
+import {
+  getProposals,
+  getProposalsByUserId,
+  getDosens,
+  getStudents,
+  uploadProposalFile,
+  createProposal,
+  updateProposal,
+  deleteProposal as deleteProposalApi,
+  approveProposalApi,
+  rejectProposalApi,
+} from "../api/proposal";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { MultiSelect } from "primereact/multiselect";
@@ -7,6 +18,7 @@ import { InputText } from "primereact/inputtext";
 import { InputNumber } from "primereact/inputnumber";
 import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
+import { TabView, TabPanel } from "primereact/tabview";
 import { Toolbar } from "primereact/toolbar";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
@@ -14,20 +26,43 @@ import { Dropdown } from "primereact/dropdown";
 import { IconField } from "primereact/iconfield";
 import { InputIcon } from "primereact/inputicon";
 import { InputTextarea } from "primereact/inputtextarea";
-import { data } from "autoprefixer";
 import { Calendar } from "primereact/calendar";
 import { FileUpload } from "primereact/fileupload";
+import { useAuth } from "../contexts/AuthContext";
+
+// Proposal's status options:
+// DRAFT,
+// WAITING_MEMBER_APPROVAL,
+// WAITING_FACULTY_HEAD,
+// WAITING_REVIEWER_RESPONSE,
+// REVIEW_IN_PROGRESS,
+// REVIEW_COMPLETE,
+// WAITING_DEAN_APPROVAL,
+// APPROVED_BY_DEAN,
+// WAITING_LPPM_APPROVAL,
+// LPPM_APPROVED,
+// ONGOING,
+// PROGRESS_REPORT_SUBMITTED,
+// PROGRESS_APPROVED,
+// FINAL_REPORT_SUBMITTED,
+// FINAL_APPROVED_BY_DEAN,
+// FINAL_APPROVED_BY_LPPM,
+// COMPLETED
 
 const Proposal = () => {
-  const BASE_URL =
-    "https://7fa6-2001-448a-7061-1443-6027-33b2-5c22-a278.ngrok-free.app/api";
-
   const toast = useRef(null);
 
+  const { user } = useAuth();
+  const userId = user?.id;
+  const isDosen = user?.roles?.some((role) => role.name === "DOSEN");
+
   const [proposals, setProposals] = useState([]);
-  const [chiefResercherOptions, setChiefResercherOptions] = useState([]);
-  const [dosenResercherOptions, setDosenResercherOptions] = useState([]);
-  const [studentResercherOptions, setStudentResercherOptions] = useState([]);
+  const [allDosens, setAllDosens] = useState([]);
+  const [chiefResearcherOptions, setChiefResearcherOptions] = useState([]);
+  const [dosenResearcherOptions, setDosenResearcherOptions] = useState([]);
+  const [studentResearcherOptions, setStudentResearcherOptions] = useState([]);
+  const [isFirstChiefResearcherChange, setIsFirstChiefResearcherChange] =
+    useState(true);
   const [globalFilter, setGlobalFilter] = useState("");
   const [dialogVisible, setDialogVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -46,8 +81,14 @@ const Proposal = () => {
     proposalMember: [],
     anggotaDosen: [],
     anggotaMahasiswa: [],
+    members: [
+      { member_type: "MAHASISWA", member_id: "123", status: "PENDING" },
+    ],
   });
   const [errors, setErrors] = useState({});
+  const [selectedProposal, setSelectedProposal] = useState(null);
+  const [proposalDetailDialogVisible, setProposalDetailDialogVisible] =
+    useState(false);
 
   // const memberTypeOptions = [
   //   { label: "Mahasiswa", value: "MAHASISWA" },
@@ -67,14 +108,13 @@ const Proposal = () => {
   // ];
 
   const fetchProposals = async () => {
-    const res = await axios.get(`${BASE_URL}/proposals`, {
-      headers: {
-        "ngrok-skip-browser-warning": "any-value",
-      },
-    });
-
-    console.log(res.data);
-    setProposals(res.data);
+    try {
+      // const res = await getProposalsByUserId(user.id);
+      const res = await getProposals();
+      setProposals(res.data);
+    } catch (error) {
+      console.error("Gagal fetch proposal:", error);
+    }
   };
 
   useEffect(() => {
@@ -83,48 +123,93 @@ const Proposal = () => {
 
   // const filteredProposals = useMemo(() => {
   //   return proposals.filter((proposal) =>
-  //     proposal.proposalname.toLowerCase().includes(globalFilter.toLowerCase())
+  //     proposal.judul.toLowerCase().includes(globalFilter.toLowerCase())
   //   );
   // }, [proposals, globalFilter]);
 
-  const fetchUsers = async () => {
-    const res = await axios.get(`${BASE_URL}/users`, {
-      headers: {
-        "ngrok-skip-browser-warning": "any-value",
-      },
-    });
+  const filteredProposals = useMemo(() => {
+    return proposals
+      .filter((p) => {
+        // 1) user adalah ketua
+        if (p.ketuaPeneliti.id === userId) return true;
 
-    console.log("User: ", res.data);
-    const opsiKetuaPeneliti = res.data.map((user) => ({
-      label: user.username,
-      value: user.id,
-    }));
-    console.log("Ketua Peneliti: ", opsiKetuaPeneliti);
+        // 2) user ada di proposalMember
+        if (p.proposalMember.some((pm) => pm.user.id === userId)) return true;
 
-    const opsiPenelitiDosen = res.data
-      .filter((user) => user.userType === "DOSEN_STAFF")
-      .map((user) => ({
-        label: user.username,
-        value: user.id,
-      }));
-    console.log("Peneliti Dosen: ", opsiPenelitiDosen);
+        return false;
+      })
+      .filter((p) =>
+        p.judul.toLowerCase().includes(globalFilter.toLowerCase())
+      );
+  }, [proposals, userId, globalFilter]);
 
-    const opsiPenelitiMahasiswa = res.data
-      .filter((user) => user.userType === "STUDENT")
-      .map((user) => ({
-        label: user.username,
-        value: user.id,
-      }));
-    console.log("Peneliti Mahasiswa: ", opsiPenelitiMahasiswa);
+  const fetchDosens = async () => {
+    try {
+      const res = await getDosens();
+      const data = res.data;
 
-    setChiefResercherOptions(opsiKetuaPeneliti);
-    setDosenResercherOptions(opsiPenelitiDosen);
-    setStudentResercherOptions(opsiPenelitiMahasiswa);
+      setAllDosens(data);
+
+      setChiefResearcherOptions(
+        data.map((dosen) => ({ label: dosen.name, value: dosen.id }))
+      );
+
+      setDosenResearcherOptions(
+        data.map((dosen) => ({ label: dosen.name, value: dosen.id }))
+      );
+    } catch (error) {
+      console.error("Gagal fetch users:", error);
+    }
   };
 
   useEffect(() => {
-    fetchUsers();
+    fetchDosens();
   }, []);
+
+  const fetchStudents = async () => {
+    try {
+      const res = await getStudents();
+      const data = res.data;
+
+      setStudentResearcherOptions(
+        data.map((student) => ({ label: student.name, value: student.id }))
+      );
+    } catch (error) {
+      console.error("Gagal fetch users:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchStudents();
+  }, []);
+
+  useEffect(() => {
+    if (form.ketuaPeneliti) {
+      setForm((prev) => ({ ...prev, anggotaDosen: [] }));
+
+      const filtered = allDosens
+        .filter((dosen) => dosen.id !== form.ketuaPeneliti)
+        .map((dosen) => ({ label: dosen.name, value: dosen.id }));
+
+      setDosenResearcherOptions(filtered);
+
+      if (!isFirstChiefResearcherChange) {
+        toast.current?.show({
+          severity: "warn",
+          summary: "Perhatian",
+          detail: "Ketua Peneliti berubah. Pilih ulang Anggota Peneliti Dosen.",
+          life: 2000,
+        });
+      } else {
+        setIsFirstChiefResearcherChange(false);
+      }
+    }
+  }, [form.ketuaPeneliti]);
+
+  const openDetailProposalDialog = (proposal) => {
+    setSelectedProposal(proposal);
+    setProposalDetailDialogVisible(true);
+  };
 
   const openAddDialog = () => {
     setIsEditMode(false);
@@ -143,14 +228,21 @@ const Proposal = () => {
       proposalMember: [],
       anggotaDosen: [],
       anggotaMahasiswa: [],
+      members: [
+        { member_type: "MAHASISWA", member_id: "123", status: "PENDING" },
+      ],
     });
     setErrors({});
     setDialogVisible(true);
   };
 
   const openEditDialog = (proposal) => {
-    const selectedDosenResearcher = proposal.anggotaDosen.map(
+    const selectedDosenResearcher = proposal.anggotaDosen?.map(
       (dosen) => dosen.name
+    );
+
+    const selectedStudentResearcher = proposal.anggotaStudent?.map(
+      (student) => student.name
     );
 
     setIsEditMode(true);
@@ -164,11 +256,10 @@ const Proposal = () => {
       luaranPenelitian: proposal.luaranPenelitian,
       namaMitra: proposal.namaMitra,
       alamatMitra: proposal.alamatMitra,
-      picMitra: proposal.picMitra,
-      ketuaPeneliti: proposal.ketuaPeneliti,
-      proposalMember: proposal.proposalMember,
+      picMitra: proposal.alamatMitra,
+      ketuaPeneliti: proposal.ketuaPeneliti.dosen.id,
       anggotaDosen: selectedDosenResearcher,
-      anggotaMahasiswa: proposal.anggotaMahasiswa,
+      anggotaMahasiswa: selectedStudentResearcher,
     });
     setErrors({});
     setDialogVisible(true);
@@ -176,58 +267,38 @@ const Proposal = () => {
 
   const closeDialog = () => {
     setDialogVisible(false);
+    setIsFirstChiefResearcherChange(true);
     setErrors({});
   };
 
   const saveProposal = async () => {
-    if (form.fileUrl && form.fileUrl.length > 0) {
-      const file = form.fileUrl[0]; // Ambil file pertama dari array
-      // Buat FormData dan kirim dengan key "file"
-      const formData = new FormData();
-      formData.append("file", file); // 🟢 harus sama dengan @RequestPart("file")
-
-      try {
-        const res = await axios.post(
-          `${BASE_URL}/proposals/upload-file`,
-          formData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          }
-        );
-        console.log("Upload sukses:", res.data);
-        form.fileUrl = res.data.fileUrl; // Simpan URL file ke form
-      } catch (error) {
-        console.error("Upload gagal:", error);
-      }
-    } else {
-      console.warn("File belum dipilih.");
-    }
-
-    if (form.waktuPelaksanaan) {
-      form.waktuPelaksanaan = form.waktuPelaksanaan.toLocaleDateString("id-ID");
-    }
-    console.log(form);
-
     try {
+      if (form.fileUrl && form.fileUrl.length > 0) {
+        const file = form.fileUrl[0];
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const res = await uploadProposalFile(formData);
+        form.fileUrl = res.data.fileUrl;
+      }
+
+      if (form.waktuPelaksanaan)
+        form.waktuPelaksanaan =
+          form.waktuPelaksanaan.toLocaleDateString("id-ID");
+
+      console.log(form);
+      // return;
+
       if (isEditMode) {
-        await axios.post(`${BASE_URL}/proposals/update`, form, {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
+        await updateProposal(form);
         toast.current.show({
           severity: "success",
           summary: "Berhasil",
           detail: "Proposal diperbarui",
         });
       } else {
-        await axios.post(`${BASE_URL}/proposals/without-file`, form, {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
+        await createProposal(form);
         toast.current.show({
           severity: "success",
           summary: "Berhasil",
@@ -239,6 +310,7 @@ const Proposal = () => {
       closeDialog();
     } catch (error) {
       if (error.response?.data?.errors) setErrors(error.response.data.errors);
+      console.error("Gagal simpan proposal:", error);
     }
   };
 
@@ -249,12 +321,14 @@ const Proposal = () => {
       message: `Hapus proposal ${proposal.judul}?`,
       header: "Konfirmasi",
       icon: "pi pi-exclamation-triangle",
+      acceptLabel: "Ya",
+      rejectLabel: "Tidak",
       accept: () => deleteProposal(proposal.id),
     });
   };
 
   const deleteProposal = async (id) => {
-    await axios.delete(`${BASE_URL}/proposals/${id}`);
+    await deleteProposalApi(id);
     toast.current.show({
       severity: "success",
       summary: "Berhasil",
@@ -279,9 +353,40 @@ const Proposal = () => {
   //   setForm({ ...form, proposalMember: updatedMembers });
   // };
 
+  const approveProposal = async (proposalId) => {
+    try {
+      console.log(proposalId, user.id);
+      await approveProposalApi(proposalId, user.id);
+      toast.current.show({
+        severity: "success",
+        summary: "Diterima",
+        detail: "Proposal disetujui",
+      });
+      // fetchProposals();
+    } catch (error) {
+      console.error("Gagal menyetujui proposal:", error);
+    }
+  };
+
+  const rejectProposal = async (proposalId) => {
+    try {
+      console.log(proposalId, user.id);
+
+      await rejectProposalApi(proposalId, user.id);
+      toast.current.show({
+        severity: "danger",
+        summary: "Ditolak",
+        detail: "Proposal ditolak",
+      });
+      // fetchProposals();
+    } catch (error) {
+      console.error("Gagal menolak proposal:", error);
+    }
+  };
+
   return (
     <div className="p-4">
-      <div className="text-xl font-semibold mb-5">Kelola Proposal</div>
+      <div className="text-2xl font-semibold mb-5">Kelola Proposal</div>
       <Toast ref={toast} />
       <ConfirmDialog />
       <div className="card">
@@ -295,6 +400,7 @@ const Proposal = () => {
                 onClick={openAddDialog}
                 className="mr-4"
                 size="small"
+                disabled={!isDosen}
               />
             </div>
           }
@@ -311,41 +417,55 @@ const Proposal = () => {
           }
         />
 
-        <DataTable value={proposals} paginator rows={10} dataKey={proposals.id}>
+        <DataTable
+          value={filteredProposals}
+          paginator
+          rows={10}
+          dataKey={proposals.id}
+        >
           <Column field="judul" header="Judul" sortable />
           <Column
-            field="ketuaPeneliti.username"
+            field="ketuaPeneliti.dosen.name"
             header="Ketua Peneliti"
             sortable
           />
-          {/* <Column
+          <Column
             field="anggotaDosen"
-            header="Anggota Dosen"
+            header="Anggota Peneliti"
             sortable
             body={(row) => (
               <span>
-                {row.anggotaDosen
-                  .map((dosen) => dosen.username)
+                {row.proposalMember
+                  .filter((pm) => pm.user.id !== row.ketuaPeneliti.id)
+                  .map((pm) =>
+                    pm.user.userType === "DOSEN_STAFF"
+                      ? pm.user.dosen?.name
+                      : pm.user.student?.name
+                  )
                   .join(", ")}
               </span>
             )}
           />
-          <Column field="picMitra" header="PIC" sortable />
           <Column
             field="waktuPelaksanaan"
             header="Waktu Pelaksanaan"
             sortable
-          /> */}
-          {/* <Column
+          />
+          <Column
             field="danaYangDiUsulkan"
             header="Dana"
-            body={(row) => `Rp ${row.danaYangDiUsulkan.toLocaleString()}`}
-          /> */}
+            body={(row) => `Rp ${row.danaYangDiUsulkan?.toLocaleString()}`}
+          />
           <Column field="status" header="Status" />
           <Column
             headerStyle={{ textAlign: "right" }}
             body={(row) => (
               <div className="text-right">
+                <Button
+                  icon="pi pi-eye"
+                  className="p-button-text"
+                  onClick={() => openDetailProposalDialog(row)}
+                />
                 <Button
                   icon="pi pi-pencil"
                   className="p-button-text"
@@ -364,20 +484,111 @@ const Proposal = () => {
       </div>
 
       <Dialog
+        header="Detail Proposal"
+        visible={proposalDetailDialogVisible}
+        onHide={() => setProposalDetailDialogVisible(false)}
+        style={{ width: "50vw" }}
+      >
+        {selectedProposal && (
+          <>
+            <p>
+              <strong>Judul:</strong> {selectedProposal.judul}
+            </p>
+            <p>
+              <strong>Ketua Peneliti:</strong>{" "}
+              {selectedProposal.ketuaPeneliti.dosen.name}
+            </p>
+            <p>
+              <strong>Anggota Peneliti:</strong>{" "}
+              {selectedProposal.proposalMember
+                .filter(
+                  (pm) => pm.user.id !== selectedProposal.ketuaPeneliti.id
+                )
+                .map((pm) => {
+                  const name =
+                    pm.user.userType === "DOSEN_STAFF"
+                      ? pm.user.dosen?.name
+                      : pm.user.student?.name;
+
+                  const role =
+                    pm.roleInProposal === "ANGGOTA_DOSEN"
+                      ? " (Dosen)"
+                      : pm.roleInProposal === "ANGGOTA_MAHASISWA"
+                      ? " (Mahasiswa)"
+                      : "";
+
+                  return `${name}${role}`;
+                })
+                .join(", ")}
+            </p>
+            <p>
+              <strong>Nama Mitra:</strong> {selectedProposal.namaMitra}
+            </p>
+            <p>
+              <strong>Alamat Mitra:</strong> {selectedProposal.alamatMitra}
+            </p>
+            <p>
+              <strong>PIC Mitra:</strong> {selectedProposal.picMitra}
+            </p>
+            <p>
+              <strong>Sumber Dana:</strong> {selectedProposal.sumberDana}
+            </p>
+            <p>
+              <strong>Dana yang Diusulkan:</strong> Rp{" "}
+              {selectedProposal.danaYangDiUsulkan?.toLocaleString("id-ID")}
+            </p>
+            <p>
+              <strong>Luaran Penelitian:</strong>{" "}
+              {selectedProposal.luaranPenelitian}
+            </p>
+            {/* <p>
+              <strong>File Proposal:</strong>{" "}
+              <a
+                href={selectedProposal.fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 underline"
+              >
+                Lihat File
+              </a>
+            </p> */}
+            {(() => {
+              const isMember = selectedProposal?.proposalMember?.some(
+                (pm) => pm.user.id === userId
+              );
+              return (
+                <div className="flex gap-1 justify-end mt-3">
+                  <Button
+                    icon="pi pi-check"
+                    label="Terima"
+                    className="p-button-success mr-2"
+                    onClick={() => approveProposal(selectedProposal.id)}
+                    disabled={!isMember}
+                  />
+                  <Button
+                    icon="pi pi-times"
+                    label="Tolak"
+                    className="p-button-danger"
+                    onClick={() => rejectProposal(selectedProposal.id)}
+                    disabled={!isMember}
+                  />
+                </div>
+              );
+            })()}
+          </>
+        )}
+      </Dialog>
+
+      <Dialog
         header={isEditMode ? "Edit Proposal" : "Tambah Proposal"}
         visible={dialogVisible}
         onHide={closeDialog}
-        style={{ width: "40vw" }}
+        style={{ width: "60vw" }}
         breakpoints={{ "960px": "75vw", "640px": "90vw" }}
         modal
         footer={
           <div className="flex justify-end mt-3">
-            <Button
-              label="Batal"
-              severity="secondary"
-              onClick={closeDialog}
-              size="small"
-            />
+            <Button label="Batal" onClick={closeDialog} size="small" outlined />
             <Button label="Simpan" onClick={saveProposal} size="small" />
           </div>
         }
@@ -398,7 +609,7 @@ const Proposal = () => {
             <Dropdown
               id="ketuaPeneliti"
               value={form.ketuaPeneliti}
-              options={chiefResercherOptions}
+              options={chiefResearcherOptions}
               onChange={(e) => setForm({ ...form, ketuaPeneliti: e.value })}
               placeholder="Pilih Ketua Peneliti"
               className={`w-full ${errors.role ? "p-invalid" : ""}`}
@@ -409,9 +620,9 @@ const Proposal = () => {
           <div className="field">
             <label htmlFor="anggotaPenelitiDosen">Anggota Peneliti Dosen</label>
             <MultiSelect
-              value={form.anggotaDosen}
+              value={form.anggotaDosen || []}
               onChange={(e) => setForm({ ...form, anggotaDosen: e.value })}
-              options={dosenResercherOptions}
+              options={dosenResearcherOptions}
               optionLabel="label"
               placeholder="Pilih Anggota Peneliti Dosen"
               maxSelectedLabels={2}
@@ -425,9 +636,9 @@ const Proposal = () => {
               Anggota Peneliti Mahasiswa
             </label>
             <MultiSelect
-              value={form.anggotaMahasiswa}
+              value={form.anggotaMahasiswa || []}
               onChange={(e) => setForm({ ...form, anggotaMahasiswa: e.value })}
-              options={studentResercherOptions}
+              options={studentResearcherOptions}
               optionLabel="label"
               placeholder="Pilih Anggota Peneliti Mahasiswa"
               maxSelectedLabels={2}
@@ -523,43 +734,90 @@ const Proposal = () => {
             />
           </div>
 
-          {/* <div>
-            <div className="flex justify-between items-center mb-2">
-              <label>Anggota</label>
-              <Button
-                icon="pi pi-plus"
-                onClick={addMemberRow}
-                size="small"
-                text
-              />
-            </div>
-            {form.members.map((member, index) => (
-              <div className="grid grid-cols-3 gap-2 mb-2" key={index}>
-                <Dropdown
-                  value={member.member_type}
-                  options={memberTypeOptions}
-                  onChange={(e) => updateMember(index, "member_type", e.value)}
-                  placeholder="Tipe"
-                  size="small"
-                />
-                <InputText
-                  value={member.member_id}
-                  onChange={(e) =>
-                    updateMember(index, "member_id", e.target.value)
-                  }
-                  placeholder="ID Anggota"
-                  size="small"
-                />
-                <Dropdown
-                  value={member.status}
-                  options={memberStatusOptions}
-                  onChange={(e) => updateMember(index, "status", e.value)}
-                  placeholder="Status"
-                  size="small"
-                />
+          {/* <TabView>
+            <TabPanel header="Anggota Peneliti">
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label>Anggota</label>
+                  <Button
+                    icon="pi pi-plus"
+                    onClick={addMemberRow}
+                    size="small"
+                    text
+                  />
+                </div>
+                {form.members.map((member, index) => (
+                  <div className="grid grid-cols-3 gap-2 mb-2" key={index}>
+                    <Dropdown
+                      value={member.member_type}
+                      options={memberTypeOptions}
+                      onChange={(e) =>
+                        updateMember(index, "member_type", e.value)
+                      }
+                      placeholder="Tipe"
+                      size="small"
+                    />
+                    <InputText
+                      value={member.member_id}
+                      onChange={(e) =>
+                        updateMember(index, "member_id", e.target.value)
+                      }
+                      placeholder="ID Anggota"
+                      size="small"
+                    />
+                    <Dropdown
+                      value={member.status}
+                      options={memberStatusOptions}
+                      onChange={(e) => updateMember(index, "status", e.value)}
+                      placeholder="Status"
+                      size="small"
+                    />
+                  </div>
+                ))}
               </div>
-            ))}
-          </div> */}
+            </TabPanel>
+<TabPanel header="Reviewer">
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label>Anggota</label>
+                  <Button
+                    icon="pi pi-plus"
+                    onClick={addMemberRow}
+                    size="small"
+                    text
+                  />
+                </div>
+                {form.members.map((member, index) => (
+                  <div className="grid grid-cols-3 gap-2 mb-2" key={index}>
+                    <Dropdown
+                      value={member.member_type}
+                      options={memberTypeOptions}
+                      onChange={(e) =>
+                        updateMember(index, "member_type", e.value)
+                      }
+                      placeholder="Tipe"
+                      size="small"
+                    />
+                    <InputText
+                      value={member.member_id}
+                      onChange={(e) =>
+                        updateMember(index, "member_id", e.target.value)
+                      }
+                      placeholder="ID Anggota"
+                      size="small"
+                    />
+                    <Dropdown
+                      value={member.status}
+                      options={memberStatusOptions}
+                      onChange={(e) => updateMember(index, "status", e.value)}
+                      placeholder="Status"
+                      size="small"
+                    />
+                  </div>
+                ))}
+              </div>
+            </TabPanel>
+          </TabView> */}
         </div>
       </Dialog>
     </div>
