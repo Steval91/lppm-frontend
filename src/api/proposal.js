@@ -5,6 +5,11 @@ export const getProposals = () =>
     "ngrok-skip-browser-warning": "any-value",
   }).get("/proposals");
 
+export const getProposalsByUserId = (userId) =>
+  customApi({
+    "ngrok-skip-browser-warning": "any-value",
+  }).get(`/proposals/user/${userId}`);
+
 export const getUsers = () =>
   customApi({
     "ngrok-skip-browser-warning": "any-value",
@@ -29,4 +34,11 @@ export const createProposal = (data) =>
 
 export const updateProposal = (data) => api.post("/proposals/update", data);
 
-export const deleteProposal = (id) => api.delete(`/proposals/${id}`);
+export const deleteProposal = (proposalId) =>
+  api.delete(`/proposals/${proposalId}`);
+
+export const approveProposalApi = (proposalId, userId) =>
+  api.post(`/proposals/${proposalId}/approve-member/${userId}`, userId);
+
+export const rejectProposalApi = (proposalId, userId) =>
+  api.post(`/proposals/${proposalId}/reject-member/${userId}`, userId);
