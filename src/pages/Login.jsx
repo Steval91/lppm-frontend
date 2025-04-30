@@ -5,12 +5,13 @@ import { Password } from "primereact/password";
 import { Button } from "primereact/button";
 import { loginApi } from "../api/auth";
 import { useAuth } from "../contexts/AuthContext";
+import { saveAuthData } from "../utils/auth";
 
 const Login = () => {
   const [form, setForm] = useState({ username: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState(""); // NEW
-  const { setUser, setNotifications } = useAuth();
+  const { updateUser, setNotifications } = useAuth();
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -23,12 +24,13 @@ const Login = () => {
     setLoading(true);
     setErrorMessage("");
     try {
-      const { user, notifications } = await loginApi(
-        form.username,
-        form.password
-      );
-      setUser(user);
-      setNotifications(notifications || []); // kalau kosong, tetap []
+      const response = await loginApi(form);
+      const { token, user, notifications } = response.data;
+      console.log("Login berhasil:", token, user, notifications);
+
+      saveAuthData(token, user);
+      updateUser(user);
+      setNotifications(notifications || []);
       navigate("/");
     } catch (error) {
       console.error("Login gagal:", error);
@@ -48,7 +50,7 @@ const Login = () => {
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
             <label htmlFor="username" className="block mb-1 font-semibold">
-              Username
+              Nama Pengguna
             </label>
             <InputText
               id="username"
@@ -59,9 +61,9 @@ const Login = () => {
               required
             />
           </div>
-          <div>
+          <div className="mb-1">
             <label htmlFor="password" className="block mb-1 font-semibold">
-              Password
+              Kata Sandi
             </label>
             <Password
               id="password"

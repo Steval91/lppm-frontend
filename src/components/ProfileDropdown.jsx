@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { Avatar } from "primereact/avatar";
 import { Menu } from "primereact/menu";
 import { Button } from "primereact/button";
@@ -9,17 +9,19 @@ import { useNavigate } from "react-router-dom";
 const ProfileDropdown = () => {
   const menuRef = useRef(null);
   const { user, logout } = useAuth();
+  const username =
+    user?.userType === "DOSEN_STAFF" ? user?.dosen.name : user?.student.name;
   const navigate = useNavigate();
 
   const items = [
     {
-      label: user?.dosen.name,
+      label: username,
       template: () => (
         <div className="px-4 py-2">
           <div className="flex items-center gap-2">
-            <Avatar image="https://i.pravatar.cc/40" shape="circle" />
+            {/* <Avatar image="https://i.pravatar.cc/40" shape="circle" /> */}
             <div className="flex flex-col">
-              <div className="font-semibold">{user?.dosen.name || "-"}</div>
+              <div className="font-semibold">{username}</div>
               <div
                 className="text-sm text-gray-500 truncate max-w-[150px] block email"
                 data-pr-tooltip={user?.email}
@@ -52,12 +54,10 @@ const ProfileDropdown = () => {
         className="flex items-center gap-2 w-full"
         text
       >
-        <Avatar image="https://i.pravatar.cc/40" shape="circle" />
+        {/* <Avatar image="https://i.pravatar.cc/40" shape="circle" /> */}
         <div className="flex-1 text-left">
           <Tooltip target=".email" />
-          <div className="font-medium text-md">
-            {user?.dosen.name || "User"}
-          </div>
+          <div className="font-medium text-md">{username}</div>
           <div
             className="text-sm text-gray-500 truncate max-w-[150px] block email"
             data-pr-tooltip={user?.email}

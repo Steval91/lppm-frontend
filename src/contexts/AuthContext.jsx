@@ -1,6 +1,12 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
-import { getToken, removeToken } from "../utils/auth";
-import { api } from "../api/axios";
+import {
+  getToken,
+  getLocalUser,
+  removeAuthData,
+  setLocalUser,
+  removeLocalUser,
+} from "../utils/auth";
+import { getLoginUser } from "../api/auth";
 
 const AuthContext = createContext();
 
@@ -13,29 +19,44 @@ export const AuthProvider = ({ children }) => {
       const token = getToken();
       if (!token) return;
 
-      const response = await api.get("/me", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setUser(response.data);
+      const savedUser = getLocalUser();
+      const response = await getLoginUser(savedUser.id);
+      console.log("User data:", response.data);
+      updateUser(response.data);
     } catch (err) {
       console.error("Gagal fetch user:", err);
-      setUser(null);
+      updateUser(null);
     }
-  };
-
-  const logout = () => {
-    removeToken();
-    setUser(null);
-    setNotifications([]);
   };
 
   useEffect(() => {
     fetchUser();
   }, []);
 
+  const updateUser = (data) => {
+    setUser(data);
+    if (data) {
+      setLocalUser(data);
+    } else {
+      removeLocalUser();
+    }
+  };
+
+  const logout = () => {
+    removeAuthData();
+    updateUser(null);
+    setNotifications([]);
+  };
+
   return (
     <AuthContext.Provider
-      value={{ user, setUser, notifications, setNotifications, logout }}
+      value={{
+        user,
+        updateUser,
+        notifications,
+        setNotifications,
+        logout,
+      }}
     >
       {children}
     </AuthContext.Provider>
