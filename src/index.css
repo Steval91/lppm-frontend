@@ -8,3 +8,14 @@ label,
 div {
   user-select: none;
 }
+
+/* styles.css */
+.custom-overlaypanel::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 20px;
+  border-width: 6px;
+  border-style: solid;
+  border-color: transparent transparent white transparent;
+}

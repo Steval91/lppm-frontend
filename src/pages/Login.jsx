@@ -11,7 +11,7 @@ const Login = () => {
   const [form, setForm] = useState({ username: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState(""); // NEW
-  const { updateUser, setNotifications } = useAuth();
+  const { updateUser } = useAuth();
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -23,14 +23,14 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     setErrorMessage("");
+
     try {
       const response = await loginApi(form);
-      const { token, user, notifications } = response.data;
-      console.log("Login berhasil:", token, user, notifications);
+      const { token, user } = response.data;
 
       saveAuthData(token, user);
-      updateUser(user);
-      setNotifications(notifications || []);
+      updateUser(user); // fetch notifikasi otomatis di context
+
       navigate("/");
     } catch (error) {
       console.error("Login gagal:", error);
