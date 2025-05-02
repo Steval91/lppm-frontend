@@ -2,6 +2,7 @@ import React from "react";
 import { NavLink } from "react-router-dom";
 import { classNames } from "primereact/utils";
 import ProfileDropdown from "./ProfileDropdown";
+import ProfileDropdown2 from "./ProfileDropdown2";
 import { useAuth } from "../contexts/AuthContext";
 
 const menuItems = [
@@ -81,7 +82,7 @@ const SidebarMenu = () => {
         )}
       </div>
 
-      <ProfileDropdown />
+      <ProfileDropdown2 />
     </div>
   );
 };
