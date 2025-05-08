@@ -15,6 +15,7 @@ const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [loadingUser, setLoadingUser] = useState(true);
   const [notifications, setNotifications] = useState([]);
   const [notificationSummary, setNotificationSummary] = useState({
     totalRead: 0,
@@ -23,6 +24,7 @@ export const AuthProvider = ({ children }) => {
 
   const fetchUser = async () => {
     try {
+      setLoadingUser(true);
       const token = getToken();
       if (!token) return;
 
@@ -31,9 +33,12 @@ export const AuthProvider = ({ children }) => {
       updateUser(response.data);
     } catch (err) {
       console.error("Gagal fetch user:", err);
-      updateUser(null);
+      // updateUser(null);
+    } finally {
+      setLoadingUser(false);
     }
   };
+
   useEffect(() => {
     fetchUser();
   }, []);
@@ -41,7 +46,7 @@ export const AuthProvider = ({ children }) => {
   const fetchNotifications = async (userId) => {
     try {
       const res = await getUserNotifications(userId);
-      const notif = res.data || [];
+      const notif = res.data.notifications || [];
       setNotifications(notif);
       const totalUnread = notif.filter((n) => !n.read).length;
       const totalRead = notif.length - totalUnread;
@@ -52,6 +57,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
+    // fetchUser(); // fetch user awal
+
     if (!user?.id) return;
 
     fetchNotifications(user.id); // fetch awal
@@ -97,6 +104,7 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider
       value={{
         user,
+        loadingUser,
         updateUser,
         fetchNotifications,
         notifications,
