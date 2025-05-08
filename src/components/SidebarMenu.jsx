@@ -6,15 +6,21 @@ import ProfileDropdown2 from "./ProfileDropdown2";
 import { useAuth } from "../contexts/AuthContext";
 
 const menuItems = [
-  { label: "Dashboard", path: "/", icon: "pi pi-th-large" },
-  { label: "Proposal", path: "/proposals", icon: "pi pi-book" },
-  // { label: "Dekan", path: "/dekan", icon: "pi pi-building" },
+  // { label: "Dashboard", path: "/", icon: "pi pi-th-large" },
+  // { label: "Proposal Saya", path: "/my-proposals", icon: "pi pi-book" },
+  { label: "Pengajuan", path: "/proposals", icon: "pi pi-user-edit" },
+  {
+    label: "Review",
+    path: "/reviews",
+    icon: "pi pi-check-square",
+  },
   // {
-  //   label: "Ketua Penelitian Fak",
-  //   path: "/facultyHead",
-  //   icon: "pi pi-building",
+  //   label: "Laporan Progres",
+  //   path: "/progress-reports",
+  //   icon: "pi pi-directions",
   // },
-  // { label: "Reviewer", path: "/reviewer", icon: "pi pi-building" },
+  // { label: "Laporan Akhir", path: "/final-reports", icon: "pi pi-flag" },
+  // { label: "Penelitian", path: "/research", icon: "pi pi-list" },
 ];
 
 const settingMenuItems = [

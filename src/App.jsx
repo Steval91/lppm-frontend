@@ -6,11 +6,12 @@ import MainLayout from "./layout/MainLayout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Proposal from "./pages/Proposal";
+import FacultyHead from "./pages/FacultyHeadDashboard";
 import User from "./pages/User";
 import Faculty from "./pages/Faculty";
 import FacultyHeadDashboard from "./pages/FacultyHeadDashboard";
 import ReviewerDashboard from "./pages/ReviewerDashboard";
-import DekanDashboard from "./pages/DekanDashboard";
+import Review from "./pages/Review";
 
 const App = () => {
   return (
@@ -25,7 +26,9 @@ const App = () => {
         }
       >
         <Route index element={<Dashboard />} />
+        <Route path="my-proposals" element={<Dashboard />} />
         <Route path="proposals" element={<Proposal />} />
+        <Route path="reviews" element={<Review />} />
         <Route
           path="users"
           element={
@@ -42,9 +45,9 @@ const App = () => {
             </AdminRoute>
           }
         />
-        <Route path="facultyHead" element={<FacultyHeadDashboard />} />
-        <Route path="reviewer" element={<ReviewerDashboard />} />
-        <Route path="dekan" element={<DekanDashboard />} />
+        <Route path="progress-reports" element={<FacultyHeadDashboard />} />
+        <Route path="final-reports" element={<ReviewerDashboard />} />
+        <Route path="research" element={<Review />} />
       </Route>
       {/* Redirect unknown routes to login or dashboard */}
       <Route path="*" element={<Navigate to="/" replace />} />{" "}
