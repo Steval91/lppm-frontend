@@ -1,8 +1,12 @@
-import { api } from "./axios";
+import { customApi } from "./axios";
 
 export const getUserNotifications = (userId) => {
-  return api.get(`/notifications/${userId}`);
+  return customApi({
+    "ngrok-skip-browser-warning": "any-value",
+  }).get(`/notifications/${userId}`);
 };
 
 export const markNotificationReadApi = (notificationId) =>
-  api.get(`/notifications/mark-read/${notificationId}`);
+  customApi({
+    "ngrok-skip-browser-warning": "any-value",
+  }).get(`/notifications/mark-read/${notificationId}`);
