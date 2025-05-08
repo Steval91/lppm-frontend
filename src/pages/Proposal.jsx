@@ -1,7 +1,6 @@
 import { React, useEffect, useState, useMemo, useRef } from "react";
 import {
   getProposals,
-  getProposalsByUserId,
   getDosens,
   getStudents,
   uploadProposalFile,
@@ -18,7 +17,6 @@ import { InputText } from "primereact/inputtext";
 import { InputNumber } from "primereact/inputnumber";
 import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
-import { TabView, TabPanel } from "primereact/tabview";
 import { Toolbar } from "primereact/toolbar";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
@@ -28,6 +26,8 @@ import { InputIcon } from "primereact/inputicon";
 import { InputTextarea } from "primereact/inputtextarea";
 import { Calendar } from "primereact/calendar";
 import { FileUpload } from "primereact/fileupload";
+import { Card } from "primereact/card";
+import { Tag } from "primereact/tag";
 import { useAuth } from "../contexts/AuthContext";
 
 // Proposal's status options:
@@ -52,7 +52,7 @@ import { useAuth } from "../contexts/AuthContext";
 const Proposal = () => {
   const toast = useRef(null);
 
-  const { user } = useAuth();
+  const { user, fetchNotifications } = useAuth();
   const userId = user?.id;
   const isDosen = user?.roles?.some((role) => role.name === "DOSEN");
 
@@ -65,6 +65,7 @@ const Proposal = () => {
     useState(true);
   const [globalFilter, setGlobalFilter] = useState("");
   const [dialogVisible, setDialogVisible] = useState(false);
+  const [fileDialogVisible, setFileDialogVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [form, setForm] = useState({
     id: null,
@@ -109,7 +110,6 @@ const Proposal = () => {
 
   const fetchProposals = async () => {
     try {
-      // const res = await getProposalsByUserId(user.id);
       const res = await getProposals();
       setProposals(res.data);
     } catch (error) {
@@ -120,12 +120,6 @@ const Proposal = () => {
   useEffect(() => {
     fetchProposals();
   }, []);
-
-  // const filteredProposals = useMemo(() => {
-  //   return proposals.filter((proposal) =>
-  //     proposal.judul.toLowerCase().includes(globalFilter.toLowerCase())
-  //   );
-  // }, [proposals, globalFilter]);
 
   const filteredProposals = useMemo(() => {
     return proposals
@@ -224,7 +218,7 @@ const Proposal = () => {
       namaMitra: "",
       alamatMitra: "",
       picMitra: "",
-      ketuaPeneliti: null,
+      ketuaPeneliti: user.dosen.id,
       proposalMember: [],
       anggotaDosen: [],
       anggotaMahasiswa: [],
@@ -237,19 +231,45 @@ const Proposal = () => {
   };
 
   const openEditDialog = (proposal) => {
-    const selectedDosenResearcher = proposal.anggotaDosen?.map(
-      (dosen) => dosen.name
-    );
+    // Filter anggota dosen (exclude ketua peneliti)
+    const anggotaDosenIds = proposal.proposalMember
+      .filter(
+        (member) =>
+          member.roleInProposal === "ANGGOTA_DOSEN" &&
+          member.user.id !== proposal.ketuaPeneliti.id
+      )
+      .map((member) => member.user.dosen.id);
 
-    const selectedStudentResearcher = proposal.anggotaStudent?.map(
-      (student) => student.name
-    );
+    // Filter anggota mahasiswa
+    const anggotaMahasiswaIds = proposal.proposalMember
+      .filter((member) => member.roleInProposal === "ANGGOTA_MAHASISWA")
+      .map((member) => member.user.student.id);
+
+    // Konversi waktuPelaksanaan string ke Date object
+    const parseDate = (dateString) => {
+      if (!dateString) return null;
+
+      // Format dari API: "5/5/2025" (MM/DD/YYYY atau DD/MM/YYYY)
+      const parts = dateString.split("/");
+      if (parts.length === 3) {
+        // Asumsikan format DD/MM/YYYY
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1; // Bulan di JavaScript dimulai dari 0
+        const year = parseInt(parts[2], 10);
+
+        // Pastikan nilai valid
+        if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+          return new Date(year, month, day);
+        }
+      }
+      return null;
+    };
 
     setIsEditMode(true);
     setForm({
       id: proposal.id,
       judul: proposal.judul,
-      waktuPelaksanaan: proposal.waktuPelaksanaan,
+      waktuPelaksanaan: parseDate(proposal.waktuPelaksanaan),
       sumberDana: proposal.sumberDana,
       danaYangDiUsulkan: proposal.danaYangDiUsulkan,
       fileUrl: proposal.fileUrl,
@@ -258,8 +278,8 @@ const Proposal = () => {
       alamatMitra: proposal.alamatMitra,
       picMitra: proposal.alamatMitra,
       ketuaPeneliti: proposal.ketuaPeneliti.dosen.id,
-      anggotaDosen: selectedDosenResearcher,
-      anggotaMahasiswa: selectedStudentResearcher,
+      anggotaDosen: anggotaDosenIds,
+      anggotaMahasiswa: anggotaMahasiswaIds,
     });
     setErrors({});
     setDialogVisible(true);
@@ -306,6 +326,7 @@ const Proposal = () => {
         });
       }
 
+      fetchNotifications(userId);
       fetchProposals();
       closeDialog();
     } catch (error) {
@@ -362,7 +383,9 @@ const Proposal = () => {
         summary: "Diterima",
         detail: "Proposal disetujui",
       });
-      // fetchProposals();
+      fetchProposals();
+      fetchNotifications(userId);
+      setProposalDetailDialogVisible(false);
     } catch (error) {
       console.error("Gagal menyetujui proposal:", error);
     }
@@ -378,7 +401,9 @@ const Proposal = () => {
         summary: "Ditolak",
         detail: "Proposal ditolak",
       });
-      // fetchProposals();
+      fetchProposals();
+      fetchNotifications(userId);
+      setProposalDetailDialogVisible(false);
     } catch (error) {
       console.error("Gagal menolak proposal:", error);
     }
@@ -440,7 +465,7 @@ const Proposal = () => {
                   .map((pm) =>
                     pm.user.userType === "DOSEN_STAFF"
                       ? pm.user.dosen?.name
-                      : pm.user.student?.name
+                      : `${pm.user.student?.name} (Mahasiswa)`
                   )
                   .join(", ")}
               </span>
@@ -459,26 +484,32 @@ const Proposal = () => {
           <Column field="status" header="Status" />
           <Column
             headerStyle={{ textAlign: "right" }}
-            body={(row) => (
-              <div className="text-right">
-                <Button
-                  icon="pi pi-eye"
-                  className="p-button-text"
-                  onClick={() => openDetailProposalDialog(row)}
-                />
-                <Button
-                  icon="pi pi-pencil"
-                  className="p-button-text"
-                  onClick={() => openEditDialog(row)}
-                />
-                <Button
-                  icon="pi pi-trash"
-                  severity="danger"
-                  className="p-button-text"
-                  onClick={() => confirmDelete(row)}
-                />
-              </div>
-            )}
+            body={(row) => {
+              return (
+                <div className="text-right">
+                  <Button
+                    icon="pi pi-eye"
+                    className="p-button-text"
+                    onClick={() => openDetailProposalDialog(row)}
+                  />
+                  {userId === row.ketuaPeneliti.id && (
+                    <>
+                      <Button
+                        icon="pi pi-pencil"
+                        className="p-button-text"
+                        onClick={() => openEditDialog(row)}
+                      />
+                      <Button
+                        icon="pi pi-trash"
+                        severity="danger"
+                        className="p-button-text"
+                        onClick={() => confirmDelete(row)}
+                      />
+                    </>
+                  )}
+                </div>
+              );
+            }}
           />
         </DataTable>
       </div>
@@ -491,7 +522,7 @@ const Proposal = () => {
       >
         {selectedProposal && (
           <>
-            <p>
+            {/* <p>
               <strong>Judul:</strong> {selectedProposal.judul}
             </p>
             <p>
@@ -541,7 +572,7 @@ const Proposal = () => {
               <strong>Luaran Penelitian:</strong>{" "}
               {selectedProposal.luaranPenelitian}
             </p>
-            {/* <p>
+            <p>
               <strong>File Proposal:</strong>{" "}
               <a
                 href={selectedProposal.fileUrl}
@@ -551,10 +582,10 @@ const Proposal = () => {
               >
                 Lihat File
               </a>
-            </p> */}
+            </p>
             {(() => {
               const isMember = selectedProposal?.proposalMember?.some(
-                (pm) => pm.user.id === userId
+                (pm) => pm.user.id === userId && pm.status === "PENDING"
               );
               return (
                 <div className="flex gap-1 justify-end mt-3">
@@ -574,7 +605,108 @@ const Proposal = () => {
                   />
                 </div>
               );
-            })()}
+            })()} */}
+            <div className="grid grid-cols-2">
+              <div className="field">
+                <label className="font-bold block mb-1">Judul</label>
+                <p>{selectedProposal.judul}</p>
+              </div>
+
+              <div className="field">
+                <label className="font-bold block mb-1">Ketua Peneliti</label>
+                <p>{selectedProposal.ketuaPeneliti?.dosen?.name}</p>
+              </div>
+
+              <div className="field mt-3">
+                <label className="font-bold block mb-1">Anggota Peneliti</label>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {selectedProposal.proposalMember
+                    .filter(
+                      (pm) => pm.user.id !== selectedProposal.ketuaPeneliti.id
+                    )
+                    .map((pm, index) => {
+                      const name =
+                        pm.user.userType === "DOSEN_STAFF"
+                          ? pm.user.dosen?.name
+                          : pm.user.student?.name;
+                      const role =
+                        pm.roleInProposal === "ANGGOTA_DOSEN"
+                          ? "Dosen"
+                          : "Mahasiswa";
+
+                      return (
+                        <Tag
+                          key={index}
+                          value={`${name} (${role})`}
+                          severity={role === "Dosen" ? "default" : "warning"}
+                          className="mr-1 mb-2"
+                        />
+                      );
+                    })}
+                </div>
+              </div>
+
+              <div className="field mt-3">
+                <label className="font-bold block mb-1">Mitra</label>
+                <p>{selectedProposal.namaMitra || "-"}</p>
+                <p className="text-sm text-gray-600">
+                  {selectedProposal.alamatMitra || "-"}
+                </p>
+                <p className="text-sm">
+                  PIC: {selectedProposal.picMitra || "-"}
+                </p>
+              </div>
+
+              <div className="field mt-3">
+                <label className="font-bold block mb-1">Pendanaan</label>
+                <p>Sumber: {selectedProposal.sumberDana || "-"}</p>
+                <p>
+                  Dana: Rp{" "}
+                  {selectedProposal.danaYangDiUsulkan?.toLocaleString(
+                    "id-ID"
+                  ) || "0"}
+                </p>
+              </div>
+
+              <div className="field mt-3">
+                <label className="font-bold block mb-1">
+                  Luaran Penelitian
+                </label>
+                <p>{selectedProposal.luaranPenelitian || "-"}</p>
+              </div>
+
+              {/* <div className="field mt-3">
+                <Button
+                  label="Lihat File Proposal"
+                  icon="pi pi-file-pdf"
+                  onClick={() => setFileDialogVisible(true)}
+                  className="p-button-outlined p-button-secondary"
+                />
+              </div> */}
+            </div>
+            {() => {
+              const isMember = selectedProposal?.proposalMember?.some(
+                (pm) => pm.user.id === userId && pm.status === "PENDING"
+              );
+              return (
+                <div className="flex gap-1 justify-end mt-3">
+                  <Button
+                    icon="pi pi-check"
+                    label="Terima"
+                    className="p-button-success mr-2"
+                    onClick={() => approveProposal(selectedProposal.id)}
+                    disabled={!isMember}
+                  />
+                  <Button
+                    icon="pi pi-times"
+                    label="Tolak"
+                    className="p-button-danger"
+                    onClick={() => rejectProposal(selectedProposal.id)}
+                    disabled={!isMember}
+                  />
+                </div>
+              );
+            }}
           </>
         )}
       </Dialog>
@@ -613,6 +745,7 @@ const Proposal = () => {
               onChange={(e) => setForm({ ...form, ketuaPeneliti: e.value })}
               placeholder="Pilih Ketua Peneliti"
               className={`w-full ${errors.role ? "p-invalid" : ""}`}
+              disabled={true}
               size="small"
             />
           </div>
