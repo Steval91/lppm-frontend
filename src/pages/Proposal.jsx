@@ -53,8 +53,15 @@ const Proposal = () => {
   const toast = useRef(null);
 
   const { user, fetchNotifications } = useAuth();
+  // const { user, loadingUser, fetchNotifications } = useAuth();
   const userId = user?.id;
   const isDosen = user?.roles?.some((role) => role.name === "DOSEN");
+
+  // useEffect(() => {
+  //   if (!loadingUser && user) {
+  //     fetchProposals();
+  //   }
+  // }, [loadingUser, user]);
 
   const [proposals, setProposals] = useState([]);
   const [allDosens, setAllDosens] = useState([]);
@@ -683,30 +690,30 @@ const Proposal = () => {
                   className="p-button-outlined p-button-secondary"
                 />
               </div> */}
-            </div>
-            {() => {
-              const isMember = selectedProposal?.proposalMember?.some(
+
+              {selectedProposal?.proposalMember?.some(
                 (pm) => pm.user.id === userId && pm.status === "PENDING"
-              );
-              return (
-                <div className="flex gap-1 justify-end mt-3">
-                  <Button
-                    icon="pi pi-check"
-                    label="Terima"
-                    className="p-button-success mr-2"
-                    onClick={() => approveProposal(selectedProposal.id)}
-                    disabled={!isMember}
-                  />
-                  <Button
-                    icon="pi pi-times"
-                    label="Tolak"
-                    className="p-button-danger"
-                    onClick={() => rejectProposal(selectedProposal.id)}
-                    disabled={!isMember}
-                  />
-                </div>
-              );
-            }}
+              ) && (
+                <>
+                  <div className="flex gap-1 justify-end mt-3">
+                    <Button
+                      icon="pi pi-check"
+                      label="Terima"
+                      className="p-button-success mr-2"
+                      onClick={() => approveProposal(selectedProposal.id)}
+                      // disabled={!isMember}
+                    />
+                    <Button
+                      icon="pi pi-times"
+                      label="Tolak"
+                      className="p-button-danger"
+                      onClick={() => rejectProposal(selectedProposal.id)}
+                      // disabled={!isMember}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
           </>
         )}
       </Dialog>
