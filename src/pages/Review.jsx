@@ -16,7 +16,7 @@ import { InputNumber } from "primereact/inputnumber";
 import { Tooltip } from "primereact/tooltip";
 import { useAuth } from "../contexts/AuthContext";
 import { getUsers } from "../api/user";
-// import { getProposals } from "../api/proposal";
+import { getProposals } from "../api/proposal";
 import {
   getProposalReviews,
   chooseReviewerApi,
@@ -102,7 +102,8 @@ export default function Review() {
   const fetchProposalReviews = async () => {
     try {
       console.log("Fetching proposal reviews for user:", user.id);
-      const res = await getProposalReviews();
+      const res = await getProposals();
+      // const res = await getProposalReviews();
       setProposals(res.data);
     } catch (error) {
       console.error("Gagal fetch proposal review:", error);
