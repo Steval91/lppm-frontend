@@ -307,7 +307,9 @@ const Proposal = () => {
         formData.append("file", file);
 
         const res = await uploadProposalFile(formData);
-        form.fileUrl = res.data.fileUrl;
+        const fileUrl = res.data;
+        console.log("File URL:", fileUrl);
+        form.fileUrl = fileUrl;
       }
 
       if (form.waktuPelaksanaan)
@@ -682,14 +684,14 @@ const Proposal = () => {
                 <p>{selectedProposal.luaranPenelitian || "-"}</p>
               </div>
 
-              {/* <div className="field mt-3">
+              <div className="field mt-3">
                 <Button
                   label="Lihat File Proposal"
                   icon="pi pi-file-pdf"
                   onClick={() => setFileDialogVisible(true)}
                   className="p-button-outlined p-button-secondary"
                 />
-              </div> */}
+              </div>
 
               {selectedProposal?.proposalMember?.some(
                 (pm) => pm.user.id === userId && pm.status === "PENDING"
@@ -715,6 +717,29 @@ const Proposal = () => {
               )}
             </div>
           </>
+        )}
+      </Dialog>
+
+      <Dialog
+        header={`File Proposal: ${selectedProposal?.judul}`}
+        visible={fileDialogVisible}
+        style={{ width: "80vw", height: "90vh" }}
+        onHide={() => setFileDialogVisible(false)}
+        maximizable
+      >
+        {selectedProposal?.fileUrl ? (
+          <iframe
+            src={selectedProposal?.fileUrl}
+            width="100%"
+            height="100%"
+            style={{ minHeight: "70vh", border: "none" }}
+            title="File Proposal"
+          />
+        ) : (
+          <div className="text-center p-4">
+            <i className="pi pi-exclamation-triangle mr-2" />
+            File proposal tidak tersedia
+          </div>
         )}
       </Dialog>
 
