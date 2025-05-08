@@ -23,6 +23,8 @@ import {
   reviewerAcceptProposalReviewApi,
   reviewerRejectProposalReviewApi,
   createProposalReview,
+  researchFacultyHeadAcceptProposalApi,
+  deanAcceptProposalApi,
 } from "../api/proposal-review";
 
 const initialCriteria = [
@@ -143,8 +145,12 @@ export default function Review() {
           (isResearchFacultyHead || isReviewer) &&
           (p.status === "WAITING_FACULTY_HEAD" ||
             p.status === "WAITING_REVIEWER_RESPONSE" ||
-            p.status === "REVIEW_IN_PROGRESS")
+            p.status === "REVIEW_IN_PROGRESS" ||
+            p.status === "REVIEW_COMPLETED" ||
+            p.status === "WAITING_DEAN_APPROVAL" ||
+            p.status === "WAITING_LPPM_APPROVAL")
         );
+        // return !!(isResearchFacultyHead || isReviewer);
         // return true; // Sementara, kembalikan semua proposalj
       })
       .filter(
@@ -211,7 +217,7 @@ export default function Review() {
       });
 
       setDialogVisible(false);
-      fetchProposals(); // Refresh data proposal
+      fetchProposalReviews(); // Refresh data proposal
       fetchNotifications(userId);
     } catch (error) {
       console.error("Gagal memilih reviewer:", error);
@@ -265,6 +271,31 @@ export default function Review() {
       setDialogHeader("Penilain Proposal");
     } else if (mode === "proposal_detail") {
       setDialogHeader("Detail Proposal");
+    }
+  };
+
+  const approveProposalBy = async (proposalId, approvedBy) => {
+    try {
+      console.log("TEST ===>", proposalId, user.id, approvedBy);
+      if (approvedBy == "KETUA_PENELITIAN_FAKULTAS") {
+        await researchFacultyHeadAcceptProposalApi({
+          proposalId: proposalId,
+          reviewedById: userId,
+          status: "ACCEPTED",
+        });
+      } else if (approvedBy == "DEKAN") {
+        await deanAcceptProposalApi(proposalId);
+      }
+      toast.current.show({
+        severity: "success",
+        summary: "Diterima",
+        detail: "Proposal disetujui",
+      });
+      fetchProposalReviews();
+      fetchNotifications(userId);
+      setDialogVisible(false);
+    } catch (error) {
+      console.error("Gagal menyetujui proposal:", error);
     }
   };
 
@@ -523,97 +554,155 @@ export default function Review() {
             />
           </div>
 
-          {selectedProposal.proposalEvaluation && (
-            <div className="mt-5">
-              <h3 className="font-bold text-lg mb-3">Penilaian Proposal</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="field">
-                  <label className="font-bold block mb-1">Reviewer</label>
-                  <p>
-                    {selectedProposal.proposalEvaluation.reviewer?.dosen
-                      ?.name ||
-                      selectedProposal.proposalEvaluation.reviewer?.username ||
-                      "-"}
-                  </p>
-                </div>
-                <div className="field">
-                  <label className="font-bold block mb-1">Total Nilai</label>
-                  <p>{selectedProposal.proposalEvaluation.totalNilai || "-"}</p>
-                </div>
-              </div>
+          {selectedProposal.proposalEvaluation &&
+            selectedProposal.proposalEvaluation.length > 0 && (
+              <div className="mt-5">
+                <h3 className="font-bold text-lg mb-3">Penilaian Proposal</h3>
 
-              <div className="mt-4">
-                <DataTable
-                  value={[
-                    {
-                      kriteria: "Kualitas dan Kebaruan",
-                      nilai:
-                        selectedProposal.proposalEvaluation
-                          .nilaiKualitasDanKebaruan,
-                    },
-                    {
-                      kriteria: "Roadmap Penelitian",
-                      nilai: selectedProposal.proposalEvaluation.nilaiRoadmap,
-                    },
-                    {
-                      kriteria: "Tinjauan Pustaka",
-                      nilai:
-                        selectedProposal.proposalEvaluation
-                          .nilaiTinjauanPustaka,
-                    },
-                    {
-                      kriteria: "Kemutakhiran Sumber",
-                      nilai:
-                        selectedProposal.proposalEvaluation
-                          .nilaiKemutakhiranSumber,
-                    },
-                    {
-                      kriteria: "Metodologi",
-                      nilai:
-                        selectedProposal.proposalEvaluation.nilaiMetodologi,
-                    },
-                    {
-                      kriteria: "Target Luaran",
-                      nilai:
-                        selectedProposal.proposalEvaluation.nilaiTargetLuaran,
-                    },
-                    {
-                      kriteria: "Kompetensi dan Tugas",
-                      nilai:
-                        selectedProposal.proposalEvaluation
-                          .nilaiKompetensiDanTugas,
-                    },
-                    {
-                      kriteria: "Penulisan",
-                      nilai: selectedProposal.proposalEvaluation.nilaiPenulisan,
-                    },
-                  ]}
-                  className="p-datatable-sm"
-                >
-                  <Column field="kriteria" header="Kriteria Penilaian" />
-                  <Column field="nilai" header="Nilai" />
-                </DataTable>
-              </div>
+                {selectedProposal.proposalEvaluation.map(
+                  (itemEvaluation, index) => {
+                    // Cari data reviewer yang sesuai
+                    const reviewerData =
+                      selectedProposal.proposalReviewer?.find(
+                        (reviewer) =>
+                          reviewer.reviewer.id === itemEvaluation.reviewer
+                      );
 
-              <div className="mt-4">
-                <label className="font-bold block mb-1">Dana Disetujui</label>
-                <p>
-                  {selectedProposal.proposalEvaluation.danaDisetujui
-                    ? `Rp ${selectedProposal.proposalEvaluation.danaDisetujui.toLocaleString(
-                        "id-ID"
-                      )}`
-                    : "-"}
-                </p>
-              </div>
+                    return (
+                      <div
+                        key={itemEvaluation.id}
+                        className="mb-6 border-b pb-4"
+                      >
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                          <div className="field">
+                            <label className="font-bold block mb-1">
+                              Reviewer {index + 1}
+                            </label>
+                            <p>
+                              {reviewerData?.reviewer.dosen?.name ||
+                                reviewerData?.reviewer.username ||
+                                "-"}
+                            </p>
+                          </div>
+                          <div className="field">
+                            <label className="font-bold block mb-1">
+                              Total Nilai
+                            </label>
+                            <p>
+                              {itemEvaluation.totalNilai?.toFixed(2) || "-"}
+                            </p>
+                          </div>
+                          <div className="field">
+                            <label className="font-bold block mb-1">
+                              Tanggal Evaluasi
+                            </label>
+                            <p>
+                              {itemEvaluation.tanggalEvaluasi
+                                ? new Date(
+                                    itemEvaluation.tanggalEvaluasi
+                                  ).toLocaleDateString("id-ID", {
+                                    day: "numeric",
+                                    month: "long",
+                                    year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })
+                                : "-"}
+                            </p>
+                          </div>
+                        </div>
 
-              <div className="mt-4">
-                <label className="font-bold block mb-1">Komentar</label>
-                <div className="p-3 bg-gray-100 rounded">
-                  {selectedProposal.proposalEvaluation.komentar || "-"}
+                        <div className="mt-2">
+                          <DataTable
+                            value={[
+                              {
+                                kriteria: "Kualitas dan Kebaruan",
+                                nilai: itemEvaluation.nilaiKualitasDanKebaruan,
+                              },
+                              {
+                                kriteria: "Roadmap Penelitian",
+                                nilai: itemEvaluation.nilaiRoadmap,
+                              },
+                              {
+                                kriteria: "Tinjauan Pustaka",
+                                nilai: itemEvaluation.nilaiTinjauanPustaka,
+                              },
+                              {
+                                kriteria: "Kemutakhiran Sumber",
+                                nilai: itemEvaluation.nilaiKemutakhiranSumber,
+                              },
+                              {
+                                kriteria: "Metodologi",
+                                nilai: itemEvaluation.nilaiMetodologi,
+                              },
+                              {
+                                kriteria: "Target Luaran",
+                                nilai: itemEvaluation.nilaiTargetLuaran,
+                              },
+                              {
+                                kriteria: "Kompetensi dan Tugas",
+                                nilai: itemEvaluation.nilaiKompetensiDanTugas,
+                              },
+                              {
+                                kriteria: "Penulisan",
+                                nilai: itemEvaluation.nilaiPenulisan,
+                              },
+                            ]}
+                            className="p-datatable-sm"
+                          >
+                            <Column
+                              field="kriteria"
+                              header="Kriteria Penilaian"
+                            />
+                            <Column
+                              field="nilai"
+                              header="Nilai"
+                              body={(rowData) => (
+                                <span
+                                  className={`font-semibold ${
+                                    rowData.nilai >= 80
+                                      ? "text-green-600"
+                                      : rowData.nilai >= 60
+                                      ? "text-yellow-600"
+                                      : "text-red-600"
+                                  }`}
+                                >
+                                  {rowData.nilai}
+                                </span>
+                              )}
+                            />
+                          </DataTable>
+                        </div>
+
+                        <div className="mt-4">
+                          <label className="font-bold block mb-1">
+                            Komentar
+                          </label>
+                          <div className="p-3 bg-gray-100 rounded">
+                            {itemEvaluation.komentar || "-"}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+                )}
+
+                {/* Rata-rata Total Nilai */}
+                <div className="mt-4 p-3 bg-blue-50 rounded">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold">Rata-rata Total Nilai</span>
+                    <span className="font-bold text-lg">
+                      {(
+                        selectedProposal.proposalEvaluation.reduce(
+                          (sum, evalItem) => sum + evalItem.totalNilai,
+                          0
+                        ) / selectedProposal.proposalEvaluation.length
+                      ).toFixed(2)}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
           <Dialog
             header={`File Proposal: ${selectedProposal.judul}`}
@@ -677,9 +766,6 @@ export default function Review() {
         </>
       );
     } else if (dialogMode === "proposal_detail") {
-      const isMember = selectedProposal?.proposalReviewer?.some(
-        (pr) => pr.reviewer.id === userId && pr.status === "PENDING"
-      );
       return (
         <>
           <div className="flex gap-1 justify-end mt-3">
@@ -689,33 +775,68 @@ export default function Review() {
               onClick={() => setDialogVisible(false)}
               className="p-button-text"
             />
-            <Button
-              icon="pi pi-check"
-              label="Terima"
-              className="p-button-success mr-2 p-button-small"
-              onClick={() => approveProposal(selectedProposal.id)}
-              disabled={!isMember}
-            />
-            <Button
-              icon="pi pi-times"
-              label="Tolak"
-              className="p-button-danger p-button-small"
-              onClick={() => rejectProposal(selectedProposal.id)}
-              disabled={!isMember}
-            />
+            {selectedProposal?.proposalReviewer?.some(
+              (pr) => pr.reviewer.id === userId && pr.status === "PENDING"
+            ) && (
+              <>
+                <Button
+                  icon="pi pi-check"
+                  label="Terima"
+                  className="p-button-success mr-2 p-button-small"
+                  onClick={() => approveProposal(selectedProposal.id)}
+                />
+                <Button
+                  icon="pi pi-times"
+                  label="Tolak"
+                  className="p-button-danger p-button-small"
+                  onClick={() => rejectProposal(selectedProposal.id)}
+                />
+              </>
+            )}
+            {selectedProposal?.status === "REVIEW_COMPLETED" &&
+              user?.roles?.some(
+                (role) => role.name === "KETUA_PENELITIAN_FAKULTAS"
+              ) && (
+                <>
+                  <Button
+                    icon="pi pi-check"
+                    label="Terima"
+                    className="p-button-success mr-2 p-button-small"
+                    onClick={() =>
+                      approveProposalBy(
+                        selectedProposal.id,
+                        "KETUA_PENELITIAN_FAKULTAS"
+                      )
+                    }
+                  />
+                </>
+              )}
+            {selectedProposal?.status === "WAITING_DEAN_APPROVAL" &&
+              user?.roles?.some((role) => role.name === "DEKAN") && (
+                <>
+                  <Button
+                    icon="pi pi-check"
+                    label="Terima"
+                    className="p-button-success mr-2 p-button-small"
+                    onClick={() =>
+                      approveProposalBy(selectedProposal.id, "DEKAN")
+                    }
+                  />
+                </>
+              )}
           </div>
         </>
       );
     }
   };
 
-  if (loadingUser) {
-    return <div>Loading user data...</div>;
-  }
+  // if (loadingUser) {
+  //   return <div>Loading user data...</div>;
+  // }
 
-  if (!user) {
-    return <div>Please login to access this page</div>;
-  }
+  // if (!user) {
+  //   return <div>Please login to access this page</div>;
+  // }
 
   return (
     <div className="p-4">
@@ -773,10 +894,15 @@ export default function Review() {
               (r) => r.reviewer.id === userId
             );
 
+            const isProposalEvaluatedByReview = row.proposalReviewer.some(
+              (r) => r.reviewer.id === userId && r.isEvaluated === false
+            );
+
             const showProposalToReview =
               isRoleReviewer &&
               isProposalReviewer &&
-              row.status === "REVIEW_IN_PROGRESS";
+              !isProposalEvaluatedByReview;
+            // row.status === "REVIEW_IN_PROGRESS";
 
             return (
               <div className="flex gap-2 text-right">
@@ -798,8 +924,8 @@ export default function Review() {
                 )}
                 {showProposalToReview && (
                   <Button
-                    icon="pi pi-user-edit"
-                    className="p-button-primary p-button-sm"
+                    icon="pi pi-pencil"
+                    className="p-button-warning p-button-sm"
                     onClick={() => showDialog(row, "proposal_verification")}
                     tooltip="Berikan Penilaian"
                     tooltipOptions={{ position: "top" }}
