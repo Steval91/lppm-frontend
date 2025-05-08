@@ -25,3 +25,11 @@ export const reviewerRejectProposalReviewApi = (proposalId, reviewerId) =>
 
 export const chooseReviewerApi = (proposalId, data) =>
   api.post(`/proposal-review/${proposalId}/add-reviewer`, data);
+
+export const researchFacultyHeadAcceptProposalApi = (data) =>
+  api.post(`/proposal-review/proposal-accepted`, data);
+
+export const deanAcceptProposalApi = (proposalId) =>
+  customApi({
+    "ngrok-skip-browser-warning": "any-value",
+  }).get(`/proposal-review/dean-approve/${proposalId}`);
