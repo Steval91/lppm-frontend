@@ -32,7 +32,7 @@ export const uploadProposalFile = (formData) => {
 export const createProposal = (data) =>
   api.post("/proposals/without-file", data);
 
-export const updateProposal = (data) => api.post("/proposals/update", data);
+export const updateProposal = (data) => api.put("/proposals/update", data);
 
 export const deleteProposal = (proposalId) =>
   api.delete(`/proposals/${proposalId}`);
@@ -42,3 +42,12 @@ export const approveProposalApi = (proposalId, userId) =>
 
 export const rejectProposalApi = (proposalId, userId) =>
   api.post(`/proposals/${proposalId}/reject-member/${userId}`, userId);
+
+export const reviewerApproveProposalApi = (proposalId, userId) =>
+  api.post(`/proposals/${proposalId}/approve-member/${userId}`, userId);
+
+export const reviewerRejectProposalApi = (proposalId, userId) =>
+  api.post(`/proposals/${proposalId}/reject-member/${userId}`, userId);
+
+export const getProposalReviews = (reviewerId) =>
+  api.get(`/proposal-review/reviewer/${reviewerId}`);
