@@ -118,7 +118,7 @@ const User = () => {
   };
 
   const openEditDialog = (user) => {
-    const selectedRoles = user.roles.map((role) => role.name); // hasil: ['DOSEN', 'REVIEWER']
+    const selectedRoles = user.roles?.map((role) => role.name); // hasil: ['DOSEN', 'REVIEWER']
 
     setIsEditMode(true);
     setForm({
@@ -131,7 +131,7 @@ const User = () => {
       nik: user.dosen?.nik,
       functionalPosition: user.dosen?.functionalPosition,
       nim: user.student?.nim,
-      facultyId: user.faculty.id,
+      facultyId: user.faculty?.id,
       roles: selectedRoles,
     });
     setErrors({});
