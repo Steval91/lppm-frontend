@@ -1,26 +1,21 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
 import { classNames } from "primereact/utils";
-import ProfileDropdown from "./ProfileDropdown";
 import ProfileDropdown2 from "./ProfileDropdown2";
 import { useAuth } from "../contexts/AuthContext";
 
 const menuItems = [
-  // { label: "Dashboard", path: "/", icon: "pi pi-th-large" },
-  // { label: "Proposal Saya", path: "/my-proposals", icon: "pi pi-book" },
+  { label: "Dashboard", path: "/", icon: "pi pi-th-large" },
+  { label: "Proposal Saya", path: "/my-proposals", icon: "pi pi-book" },
   { label: "Pengajuan", path: "/proposals", icon: "pi pi-user-edit" },
+  { label: "Review", path: "/reviews", icon: "pi pi-check-square" },
   {
-    label: "Review",
-    path: "/reviews",
-    icon: "pi pi-check-square",
+    label: "Laporan Progres",
+    path: "/progress-reports",
+    icon: "pi pi-directions",
   },
-  // {
-  //   label: "Laporan Progres",
-  //   path: "/progress-reports",
-  //   icon: "pi pi-directions",
-  // },
-  // { label: "Laporan Akhir", path: "/final-reports", icon: "pi pi-flag" },
-  // { label: "Penelitian", path: "/research", icon: "pi pi-list" },
+  { label: "Laporan Akhir", path: "/final-reports", icon: "pi pi-flag" },
+  { label: "Penelitian", path: "/research", icon: "pi pi-list" },
 ];
 
 const settingMenuItems = [
@@ -60,6 +55,7 @@ const SidebarMenu = () => {
             </NavLink>
           ))}
         </nav>
+
         {isAdmin && (
           <>
             <div className="px-4 mt-6 py-2 text-md font-semibold text-gray-600 uppercase">
@@ -88,9 +84,10 @@ const SidebarMenu = () => {
         )}
       </div>
 
+      {/* ProfileDropdown2 akan handle logout sendiri */}
       <ProfileDropdown2 />
     </div>
   );
 };
 
-export default SidebarMenu;
+export default React.memo(SidebarMenu);

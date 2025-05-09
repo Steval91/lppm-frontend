@@ -1,25 +1,35 @@
 import React from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet } from "react-router-dom";
 import SidebarMenu from "../components/SidebarMenu";
-import { useAuth } from "../contexts/AuthContext"; // Ganti ini
+import { ErrorBoundary } from "react-error-boundary";
+
+const ErrorFallback = ({ error, resetErrorBoundary }) => (
+  <div className="p-4 text-red-500">
+    <h2>Something went wrong:</h2>
+    <pre>{error.message}</pre>
+    <button
+      onClick={resetErrorBoundary}
+      className="mt-2 px-4 py-2 bg-blue-500 text-white rounded"
+    >
+      Try Again
+    </button>
+  </div>
+);
 
 const MainLayout = () => {
-  const navigate = useNavigate();
-  const { logout } = useAuth(); // Ambil logout dari context
-
-  const handleLogout = () => {
-    logout(); // Ini sekarang logout context (reset user + notifications + hapus token)
-    navigate("/login");
-  };
-
   return (
     <div className="flex h-screen">
-      <SidebarMenu onLogout={handleLogout} />
-      <div className="flex-1 p-4 overflow-y-auto bg-gray-50">
-        <Outlet />
-      </div>
+      <ErrorBoundary
+        FallbackComponent={ErrorFallback}
+        onReset={() => window.location.reload()}
+      >
+        <SidebarMenu />
+        <div className="flex-1 p-4 overflow-y-auto bg-gray-50">
+          <Outlet />
+        </div>
+      </ErrorBoundary>
     </div>
   );
 };
 
-export default MainLayout;
+export default React.memo(MainLayout);

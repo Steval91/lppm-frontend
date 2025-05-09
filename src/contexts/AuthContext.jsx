@@ -1,123 +1,211 @@
-import React, { createContext, useState, useEffect, useContext } from "react";
-import { getLoginUser } from "../api/auth";
+import React, { createContext, useState, useEffect, useCallback } from "react";
 import {
   getToken,
   getLocalUser,
   removeAuthData,
   saveAuthData,
+  isTokenValid,
 } from "../utils/auth";
-import {
-  getUserNotifications,
-  markNotificationReadApi,
-} from "../api/notification";
+import { getUserNotifications } from "../api/notification";
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loadingUser, setLoadingUser] = useState(true);
-  const [notifications, setNotifications] = useState([]);
-  const [notificationSummary, setNotificationSummary] = useState({
-    totalRead: 0,
-    totalUnread: 0,
+  const [state, setState] = useState({
+    user: null,
+    loading: true,
+    error: null,
+    notifications: [],
+    notificationSummary: { totalRead: 0, totalUnread: 0 },
   });
 
-  const fetchUser = async () => {
-    try {
-      setLoadingUser(true);
-      const token = getToken();
-      if (!token) return;
-
-      const savedUser = getLocalUser();
-      const response = await getLoginUser(savedUser.id);
-      updateUser(response.data);
-    } catch (err) {
-      console.error("Gagal fetch user:", err);
-      // updateUser(null);
-    } finally {
-      setLoadingUser(false);
+  const fetchUser = useCallback(async () => {
+    const token = getToken();
+    if (!token) {
+      // Tidak ada token, langsung matikan loading dan reset error
+      setState((prev) => ({ ...prev, loading: false, error: null }));
+      return null;
     }
-  };
 
-  useEffect(() => {
-    fetchUser();
+    try {
+      // Hanya set loading true kalau token ada
+      setState((prev) => ({ ...prev, loading: true, error: null }));
+
+      if (!isTokenValid(token)) {
+        removeAuthData();
+        setState((prev) => ({
+          ...prev,
+          loading: false,
+          error: "Session expired. Please login again.",
+        }));
+        return null;
+      }
+
+      const localUser = getLocalUser();
+      if (!localUser?.id) {
+        removeAuthData();
+        setState((prev) => ({ ...prev, loading: false }));
+        return null;
+      }
+
+      // Tambahkan user ke state jika valid
+      setState((prev) => ({
+        ...prev,
+        user: localUser,
+        loading: false,
+        error: null,
+      }));
+
+      return localUser;
+    } catch (error) {
+      console.error("Auth error:", error);
+      removeAuthData();
+      setState((prev) => ({
+        ...prev,
+        loading: false,
+        error: null, // bisa juga set pesan error jika diperlukan
+      }));
+      return null;
+    }
   }, []);
 
-  const fetchNotifications = async (userId) => {
+  const fetchNotifications = useCallback(async (userId) => {
+    if (!userId) return;
+
     try {
       const res = await getUserNotifications(userId);
-      const notif = res.data.notifications || [];
-      setNotifications(notif);
-      const totalUnread = notif.filter((n) => !n.read).length;
-      const totalRead = notif.length - totalUnread;
-      setNotificationSummary({ totalUnread, totalRead });
-    } catch (err) {
-      console.error("Gagal fetch notifikasi:", err);
+      const notifications = res.data.notifications || [];
+      const totalUnread = notifications.filter((n) => !n.read).length;
+
+      setState((prev) => ({
+        ...prev,
+        notifications,
+        notificationSummary: {
+          totalUnread,
+          totalRead: notifications.length - totalUnread,
+        },
+      }));
+    } catch (error) {
+      console.error("Failed to fetch notifications:", error);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    // fetchUser(); // fetch user awal
+    let isMounted = true;
+    let notificationInterval;
 
-    if (!user?.id) return;
+    const initializeAuth = async () => {
+      try {
+        const user = await fetchUser();
+        if (isMounted && user?.id) {
+          await fetchNotifications(user.id);
+          notificationInterval = setInterval(() => {
+            fetchNotifications(user.id);
+          }, 30000);
+        }
+      } catch (error) {
+        // Tidak perlu set error di sini
+        console.error("Initialization error:", error);
+      }
+    };
 
-    fetchNotifications(user.id); // fetch awal
+    initializeAuth();
 
-    const interval = setInterval(() => {
-      fetchNotifications(user.id);
-    }, 10000);
+    return () => {
+      isMounted = false;
+      clearInterval(notificationInterval);
+    };
+  }, [fetchUser, fetchNotifications]);
 
-    return () => clearInterval(interval);
-  }, [user]);
-
-  const updateUser = (data) => {
-    setUser(data);
-    if (data) {
-      saveAuthData(getToken(), data);
-    }
-  };
-
-  const markNotificationAsRead = async (id) => {
+  const login = async (token, userData) => {
     try {
-      await markNotificationReadApi(id);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-      );
-      setNotificationSummary((prev) => ({
+      if (!token || !userData) {
+        throw new Error("Invalid login data");
+      }
+
+      // Validasi token sebelum menyimpan
+      if (!isTokenValid(token)) {
+        throw new Error("Invalid token format");
+      }
+
+      saveAuthData(token, userData);
+
+      setState((prev) => ({
         ...prev,
-        totalUnread: prev.totalUnread - 1,
-        totalRead: prev.totalRead + 1,
+        user: userData,
+        loading: false,
+        error: null,
       }));
-    } catch (err) {
-      console.error("Gagal update notifikasi:", err);
+
+      await fetchNotifications(userData.id);
+      return true; // Return boolean untuk indikator sukses
+    } catch (error) {
+      console.error("Login failed:", error);
+      removeAuthData();
+      setState((prev) => ({
+        ...prev,
+        error: error.message || "Login failed",
+      }));
+      return false;
     }
   };
 
   const logout = () => {
     removeAuthData();
-    setUser(null);
-    setNotifications([]);
-    setNotificationSummary({ totalRead: 0, totalUnread: 0 });
+    setState({
+      user: null,
+      loading: false,
+      error: null,
+      notifications: [],
+      notificationSummary: { totalRead: 0, totalUnread: 0 },
+    });
+  };
+
+  const markNotificationAsRead = async (notificationId) => {
+    try {
+      setState((prev) => ({
+        ...prev,
+        notifications: prev.notifications.map((n) =>
+          n.id === notificationId ? { ...n, read: true } : n
+        ),
+        notificationSummary: {
+          ...prev.notificationSummary,
+          totalUnread: Math.max(0, prev.notificationSummary.totalUnread - 1),
+          totalRead: prev.notificationSummary.totalRead + 1,
+        },
+      }));
+    } catch (error) {
+      console.error("Failed to mark notification as read:", error);
+    }
+  };
+
+  const value = {
+    ...state,
+    login,
+    logout,
+    fetchUser,
+    fetchNotifications,
+    markNotificationAsRead,
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loadingUser,
-        updateUser,
-        fetchNotifications,
-        notifications,
-        setNotifications,
-        notificationSummary,
-        setNotificationSummary,
-        markNotificationAsRead,
-        logout,
-      }}
-    >
-      {children}
+    <AuthContext.Provider value={value}>
+      {state.loading ? (
+        <div className="full-page-loader">
+          {/* Add your loading spinner component here */}
+          Loading...
+        </div>
+      ) : (
+        children
+      )}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = React.useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+};
