@@ -33,3 +33,18 @@ export const deanAcceptProposalApi = (proposalId) =>
   customApi({
     "ngrok-skip-browser-warning": "any-value",
   }).get(`/proposal-review/dean-approve/${proposalId}`);
+
+export const lppmAcceptProposalApi = (proposalId) =>
+  customApi({
+    "ngrok-skip-browser-warning": "any-value",
+  }).get(`/proposal-review/lppm-approve/${proposalId}`);
+
+export const downloadApprovalSheetApi = async (proposalId) => {
+  const response = await customApi({
+    "ngrok-skip-browser-warning": "any-value",
+  }).get(`/proposal-review/download-approval-sheet/${proposalId}`, {
+    responseType: "blob", // ⚠️ penting untuk file
+  });
+
+  return response.data; // Mengembalikan data blob
+};

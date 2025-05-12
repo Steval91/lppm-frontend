@@ -25,7 +25,11 @@ import {
   createProposalReview,
   researchFacultyHeadAcceptProposalApi,
   deanAcceptProposalApi,
+  lppmAcceptProposalApi,
+  downloadApprovalSheetApi,
 } from "../api/proposal-review";
+import { evaluationFormSchema } from "../validationSchemas/proposalEvaluationSchema";
+import { z } from "zod";
 
 const initialCriteria = [
   {
@@ -84,12 +88,6 @@ export default function Review() {
   const { user, loadingUser, fetchNotifications } = useAuth();
   const userId = user?.id;
 
-  useEffect(() => {
-    if (!loadingUser && user) {
-      fetchProposalReviews();
-    }
-  }, [loadingUser, user]);
-
   const [proposals, setProposals] = useState([]);
   const [proposalReviews, setProposalReviews] = useState([]);
   const [globalFilter, setGlobalFilter] = useState("");
@@ -100,6 +98,13 @@ export default function Review() {
   const [dialogMode, setDialogMode] = useState(null); // 'reviewer' or 'proposal'
   const [dialogHeader, setDialogHeader] = useState(null); // 'reviewer' or 'proposal'
   const [fileDialogVisible, setFileDialogVisible] = useState(false);
+  const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    if (!loadingUser && user) {
+      fetchProposalReviews();
+    }
+  }, [loadingUser, user]);
 
   const fetchProposalReviews = async () => {
     try {
@@ -161,42 +166,39 @@ export default function Review() {
       );
   }, [proposals, userId, globalFilter]);
 
-  const fetchReviewers = async () => {
-    try {
-      const res = await getUsers();
-
-      if (!selectedProposal) return;
-
-      // Dapatkan ID ketua dan anggota dosen dari proposal yang dipilih
-      const ketuaPenelitiId = selectedProposal.ketuaPeneliti.id;
-      const anggotaDosenIds = selectedProposal.proposalMember
-        .filter((member) => member.roleInProposal === "ANGGOTA_DOSEN")
-        .map((member) => member.user.id);
-
-      // Filter user yang:
-      // 1. Memiliki role REVIEWER
-      // 2. Bukan ketua peneliti
-      // 3. Bukan anggota dosen pada proposal ini
-      const filteredReviewers = res.data.filter((user) => {
-        const isReviewer = user.roles?.some((role) => role.name === "REVIEWER");
-        const isKetuaPeneliti = user.id === ketuaPenelitiId;
-        const isAnggotaDosen = anggotaDosenIds.includes(user.id);
-
-        return isReviewer && !isKetuaPeneliti && !isAnggotaDosen;
-      });
-
-      setReviewerOptions(
-        filteredReviewers.map((reviewer) => ({
-          label: reviewer.dosen?.name || reviewer.username,
-          value: reviewer.id,
-        }))
-      );
-    } catch (error) {
-      console.error("Gagal fetch reviewers:", error);
-    }
-  };
-
   useEffect(() => {
+    const fetchReviewers = async () => {
+      try {
+        const res = await getUsers();
+
+        if (!selectedProposal) return;
+
+        const ketuaPenelitiId = selectedProposal.ketuaPeneliti.id;
+        const anggotaDosenIds = selectedProposal.proposalMember
+          .filter((member) => member.roleInProposal === "ANGGOTA_DOSEN")
+          .map((member) => member.user.id);
+
+        const filteredReviewers = res.data.filter((user) => {
+          const isReviewer = user.roles?.some(
+            (role) => role.name === "REVIEWER"
+          );
+          const isKetuaPeneliti = user.id === ketuaPenelitiId;
+          const isAnggotaDosen = anggotaDosenIds.includes(user.id);
+
+          return isReviewer && !isKetuaPeneliti && !isAnggotaDosen;
+        });
+
+        setReviewerOptions(
+          filteredReviewers.map((reviewer) => ({
+            label: reviewer.dosen?.name || reviewer.username,
+            value: reviewer.id,
+          }))
+        );
+      } catch (error) {
+        console.error("Gagal fetch reviewers:", error);
+      }
+    };
+
     if (dialogMode === "reviewer" && selectedProposal) {
       fetchReviewers();
     }
@@ -224,53 +226,37 @@ export default function Review() {
     }
   };
 
-  // === Actions for Dekan ===
-  // const approveProposal = (id) => {
-  //   toast.current.show({
-  //     severity: "success",
-  //     summary: "Disetujui",
-  //     detail: `Proposal ID ${id} disetujui`,
-  //   });
-  //   setProposals((prev) => prev.filter((p) => p.id !== id));
-  // };
-
-  // const rejectProposal = (id) => {
-  //   toast.current.show({
-  //     severity: "warn",
-  //     summary: "Ditolak",
-  //     detail: `Proposal ID ${id} ditolak`,
-  //   });
-  //   setProposals((prev) => prev.filter((p) => p.id !== id));
-  // };
-
-  const approvalActions = (rowData) => (
-    <>
-      <Button
-        icon="pi pi-check"
-        className="p-button-success mr-2"
-        onClick={() => approveProposal(rowData.id)}
-      />
-      <Button
-        icon="pi pi-times"
-        className="p-button-danger"
-        onClick={() => rejectProposal(rowData.id)}
-      />
-    </>
-  );
-
   const showDialog = (proposal, mode) => {
     setSelectedProposal(proposal);
     setDialogMode(mode);
     setDialogVisible(true);
-    if (mode === "reviewer") {
-      setSelectedReviewers([]);
-    }
+
     if (mode === "reviewer") {
       setDialogHeader("Pilih Reviewer");
+      setSelectedReviewers([]);
     } else if (mode === "proposal_verification") {
       setDialogHeader("Penilain Proposal");
     } else if (mode === "proposal_detail") {
       setDialogHeader("Detail Proposal");
+    }
+  };
+
+  const downloadApprovalSheet = async (proposalId) => {
+    try {
+      const blob = await downloadApprovalSheetApi(proposalId);
+
+      const url = window.URL.createObjectURL(
+        new Blob([blob], { type: "application/pdf" })
+      );
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "approval_sheet.pdf"); // nama file
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url); // optional cleanup
+    } catch (error) {
+      console.error("Gagal download lembar pengesahan:", error);
     }
   };
 
@@ -285,12 +271,16 @@ export default function Review() {
         });
       } else if (approvedBy == "DEKAN") {
         await deanAcceptProposalApi(proposalId);
+      } else if (approvedBy == "LPPM") {
+        await lppmAcceptProposalApi(proposalId);
       }
+
       toast.current.show({
         severity: "success",
         summary: "Diterima",
         detail: "Proposal disetujui",
       });
+
       fetchProposalReviews();
       fetchNotifications(userId);
       setDialogVisible(false);
@@ -303,11 +293,13 @@ export default function Review() {
     try {
       console.log(proposalId, user.id);
       await reviewerAcceptProposalReviewApi(proposalId, user.id);
+
       toast.current.show({
         severity: "success",
         summary: "Diterima",
         detail: "Proposal disetujui",
       });
+
       fetchProposalReviews();
       fetchNotifications(userId);
       setDialogVisible(false);
@@ -365,6 +357,27 @@ export default function Review() {
     0
   );
 
+  const validateFormWithZod = (data) => {
+    try {
+      evaluationFormSchema.parse(data);
+      setErrors({});
+      return true;
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const formattedErrors = {};
+        error.errors.forEach((err) => {
+          const path = err.path[0];
+          formattedErrors[path] = err.message;
+        });
+        setErrors(formattedErrors);
+        console.error("Zod error:", formattedErrors);
+        return false;
+      }
+      console.error("Unexpected validation error:", error);
+      return false;
+    }
+  };
+
   const handleSubmit = async () => {
     const newForm = {
       ...form,
@@ -374,6 +387,15 @@ export default function Review() {
     };
     console.log("Submitting form:", newForm);
 
+    if (!validateFormWithZod(newForm)) {
+      toast.current.show({
+        severity: "error",
+        summary: "Validasi Gagal",
+        detail: "Periksa kembali formulir Anda",
+      });
+      return;
+    }
+
     try {
       await createProposalReview(newForm);
 
@@ -382,11 +404,11 @@ export default function Review() {
         summary: "Disimpan",
         detail: "Penilaian proposal telah disimpan",
       });
+
       fetchNotifications(userId);
       fetchProposalReviews();
       setDialogVisible(false);
     } catch (error) {
-      // if (error.response?.data?.errors) setErrors(error.response.data.errors);
       console.error("Gagal simpan proposal:", error);
     }
   };
@@ -435,21 +457,29 @@ export default function Review() {
               <Column
                 header="Nilai (0-100)"
                 body={(rowData) => (
-                  <InputNumber
-                    value={form[rowData.field]}
-                    onValueChange={(e) =>
-                      updateScore(rowData.field, e.value || 0)
-                    }
-                    mode="decimal"
-                    min={0}
-                    max={100}
-                    showButtons
-                    step={5}
-                    className="w-full"
-                  />
+                  <div className="flex flex-col gap-1">
+                    <InputNumber
+                      value={form[rowData.field]}
+                      onValueChange={(e) =>
+                        updateScore(rowData.field, e.value || 0)
+                      }
+                      mode="decimal"
+                      min={0}
+                      max={100}
+                      showButtons
+                      step={5}
+                      className={`w-full ${
+                        errors[rowData.field] ? "p-invalid" : ""
+                      }`}
+                    />
+                    {errors[rowData.field] && (
+                      <small className="p-error">{errors[rowData.field]}</small>
+                    )}
+                  </div>
                 )}
                 style={{ width: "20%" }}
               />
+
               <Column
                 header="Nilai * Bobot"
                 body={(rowData) => (
@@ -478,9 +508,12 @@ export default function Review() {
                 value={form.komentar}
                 onChange={(e) => updateComment(e.target.value)}
                 rows={4}
-                className="w-full"
+                className={`w-full ${errors.komentar ? "p-invalid" : ""}`}
                 placeholder="Berikan komentar konstruktif untuk proposal ini..."
               />
+              {errors.komentar && (
+                <small className="p-error">{errors.komentar}</small>
+              )}
             </div>
           </div>
         </>
@@ -554,6 +587,26 @@ export default function Review() {
             />
           </div>
 
+          {selectedProposal.proposalReviewer &&
+            selectedProposal.proposalReviewer.length > 0 && (
+              <div className="field mt-3">
+                <label className="font-bold block mb-1">Reviewer</label>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {selectedProposal.proposalReviewer.map((pr, index) => {
+                    const name = pr.reviewer?.dosen?.name;
+                    return (
+                      <Tag
+                        key={index}
+                        value={`${name} `}
+                        severity={"info"}
+                        className="mr-1 mb-2"
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
           {selectedProposal.proposalEvaluation &&
             selectedProposal.proposalEvaluation.length > 0 && (
               <div className="mt-5">
@@ -598,15 +651,7 @@ export default function Review() {
                             </label>
                             <p>
                               {itemEvaluation.tanggalEvaluasi
-                                ? new Date(
-                                    itemEvaluation.tanggalEvaluasi
-                                  ).toLocaleDateString("id-ID", {
-                                    day: "numeric",
-                                    month: "long",
-                                    year: "numeric",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })
+                                ? itemEvaluation.tanggalEvaluasi
                                 : "-"}
                             </p>
                           </div>
@@ -703,7 +748,6 @@ export default function Review() {
                 </div>
               </div>
             )}
-
           <Dialog
             header={`File Proposal: ${selectedProposal.judul}`}
             visible={fileDialogVisible}
@@ -824,19 +868,36 @@ export default function Review() {
                   />
                 </>
               )}
+            {user?.roles?.some((role) => role.name === "KETUA_LPPM") && (
+              <>
+                <Button
+                  icon="pi pi-download"
+                  label="Download Lembar Pengesahan"
+                  className="p-button-default mr-2 p-button-small"
+                  onClick={() => {
+                    downloadApprovalSheet(selectedProposal.id);
+                  }}
+                />
+              </>
+            )}
+            {selectedProposal?.status === "WAITING_LPPM_APPROVAL" &&
+              user?.roles?.some((role) => role.name === "KETUA_LPPM") && (
+                <>
+                  <Button
+                    icon="pi pi-check"
+                    label="Terima"
+                    className="p-button-success mr-2 p-button-small"
+                    onClick={() =>
+                      approveProposalBy(selectedProposal.id, "LPPM")
+                    }
+                  />
+                </>
+              )}
           </div>
         </>
       );
     }
   };
-
-  // if (loadingUser) {
-  //   return <div>Loading user data...</div>;
-  // }
-
-  // if (!user) {
-  //   return <div>Please login to access this page</div>;
-  // }
 
   return (
     <div className="p-4">
@@ -889,20 +950,23 @@ export default function Review() {
             const isRoleReviewer = user?.roles?.some(
               (role) => role.name === "REVIEWER"
             );
-
+            console.log("===============", row.judul);
+            console.log("Role Reviewer: ", isRoleReviewer);
             const isProposalReviewer = row.proposalReviewer.some(
               (r) => r.reviewer.id === userId
             );
-
-            const isProposalEvaluatedByReview = row.proposalReviewer.some(
+            console.log("Proposal Reviewer: ", isProposalReviewer);
+            const isProposalEvaluatedByReviewer = row.proposalReviewer.some(
               (r) => r.reviewer.id === userId && r.isEvaluated === false
             );
+            console.log("Is Evaluated: ", isProposalEvaluatedByReviewer);
 
             const showProposalToReview =
               isRoleReviewer &&
               isProposalReviewer &&
-              !isProposalEvaluatedByReview;
+              isProposalEvaluatedByReviewer;
             // row.status === "REVIEW_IN_PROGRESS";
+            console.log("Show Proposal to Review: ", showProposalToReview);
 
             return (
               <div className="flex gap-2 text-right">
