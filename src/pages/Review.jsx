@@ -153,7 +153,8 @@ export default function Review() {
             p.status === "REVIEW_IN_PROGRESS" ||
             p.status === "REVIEW_COMPLETED" ||
             p.status === "WAITING_DEAN_APPROVAL" ||
-            p.status === "WAITING_LPPM_APPROVAL")
+            p.status === "WAITING_LPPM_APPROVAL" ||
+            p.status === "ONGOING")
         );
         // return !!(isResearchFacultyHead || isReviewer);
         // return true; // Sementara, kembalikan semua proposalj
