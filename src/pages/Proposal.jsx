@@ -29,7 +29,7 @@ import { FileUpload } from "primereact/fileupload";
 import { Card } from "primereact/card";
 import { Tag } from "primereact/tag";
 import { useAuth } from "../contexts/AuthContext";
-import { proposalSchema } from "../components/Proposal/validationSchemas/proposalSchema";
+import { proposalSchema } from "../validationSchemas/proposalSchema";
 import { z } from "zod";
 
 // Proposal's status options:
