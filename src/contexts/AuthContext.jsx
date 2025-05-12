@@ -6,7 +6,10 @@ import {
   saveAuthData,
   isTokenValid,
 } from "../utils/auth";
-import { getUserNotifications } from "../api/notification";
+import {
+  getUserNotifications,
+  markNotificationReadApi,
+} from "../api/notification";
 
 const AuthContext = createContext();
 
@@ -163,6 +166,7 @@ export const AuthProvider = ({ children }) => {
 
   const markNotificationAsRead = async (notificationId) => {
     try {
+      await markNotificationReadApi(notificationId);
       setState((prev) => ({
         ...prev,
         notifications: prev.notifications.map((n) =>
