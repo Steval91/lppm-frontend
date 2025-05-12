@@ -6,16 +6,17 @@ import { useAuth } from "../contexts/AuthContext";
 
 const menuItems = [
   { label: "Dashboard", path: "/", icon: "pi pi-th-large" },
-  { label: "Proposal Saya", path: "/my-proposals", icon: "pi pi-book" },
-  { label: "Pengajuan", path: "/proposals", icon: "pi pi-user-edit" },
+  // { label: "Proposal Saya", path: "/my-proposals", icon: "pi pi-book" },
+  // { label: "Pengajuan", path: "/proposals", icon: "pi pi-user-edit" },
+  { label: "Proposal", path: "/proposals", icon: "pi pi-book" },
   { label: "Review", path: "/reviews", icon: "pi pi-check-square" },
-  {
-    label: "Laporan Progres",
-    path: "/progress-reports",
-    icon: "pi pi-directions",
-  },
-  { label: "Laporan Akhir", path: "/final-reports", icon: "pi pi-flag" },
-  { label: "Penelitian", path: "/research", icon: "pi pi-list" },
+  // {
+  //   label: "Laporan Progres",
+  //   path: "/progress-reports",
+  //   icon: "pi pi-directions",
+  // },
+  // { label: "Laporan Akhir", path: "/final-reports", icon: "pi pi-flag" },
+  // { label: "Penelitian", path: "/research", icon: "pi pi-list" },
 ];
 
 const settingMenuItems = [
