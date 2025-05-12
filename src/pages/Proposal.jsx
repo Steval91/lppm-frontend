@@ -29,6 +29,8 @@ import { FileUpload } from "primereact/fileupload";
 import { Card } from "primereact/card";
 import { Tag } from "primereact/tag";
 import { useAuth } from "../contexts/AuthContext";
+import { proposalSchema } from "../components/Proposal/validationSchemas/proposalSchema";
+import { z } from "zod";
 
 // Proposal's status options:
 // DRAFT,
@@ -52,24 +54,16 @@ import { useAuth } from "../contexts/AuthContext";
 const Proposal = () => {
   const toast = useRef(null);
 
-  const { user, fetchNotifications } = useAuth();
-  // const { user, loadingUser, fetchNotifications } = useAuth();
+  const { user, loadingUser, fetchNotifications } = useAuth();
   const userId = user?.id;
   const isDosen = user?.roles?.some((role) => role.name === "DOSEN");
-
-  // useEffect(() => {
-  //   if (!loadingUser && user) {
-  //     fetchProposals();
-  //   }
-  // }, [loadingUser, user]);
 
   const [proposals, setProposals] = useState([]);
   const [allDosens, setAllDosens] = useState([]);
   const [chiefResearcherOptions, setChiefResearcherOptions] = useState([]);
   const [dosenResearcherOptions, setDosenResearcherOptions] = useState([]);
   const [studentResearcherOptions, setStudentResearcherOptions] = useState([]);
-  const [isFirstChiefResearcherChange, setIsFirstChiefResearcherChange] =
-    useState(true);
+  const [isChiefResearcherChange, setIsChiefResearcherChange] = useState(true);
   const [globalFilter, setGlobalFilter] = useState("");
   const [dialogVisible, setDialogVisible] = useState(false);
   const [fileDialogVisible, setFileDialogVisible] = useState(false);
@@ -98,22 +92,11 @@ const Proposal = () => {
   const [proposalDetailDialogVisible, setProposalDetailDialogVisible] =
     useState(false);
 
-  // const memberTypeOptions = [
-  //   { label: "Mahasiswa", value: "MAHASISWA" },
-  //   { label: "Dosen", value: "DOSEN" },
-  // ];
-
-  // const statusOptions = [
-  //   { label: "Draft", value: "DRAFT" },
-  //   { label: "Pending", value: "PENDING" },
-  //   { label: "Disetujui", value: "APPROVED" },
-  // ];
-
-  // const memberStatusOptions = [
-  //   { label: "PENDING", value: "PENDING" },
-  //   { label: "ACCEPT", value: "ACCEPT" },
-  //   { label: "REJECT", value: "REJECT" },
-  // ];
+  useEffect(() => {
+    if (!loadingUser && user) {
+      fetchProposals();
+    }
+  }, [loadingUser, user]);
 
   const fetchProposals = async () => {
     try {
@@ -194,7 +177,7 @@ const Proposal = () => {
 
       setDosenResearcherOptions(filtered);
 
-      if (!isFirstChiefResearcherChange) {
+      if (!isChiefResearcherChange) {
         toast.current?.show({
           severity: "warn",
           summary: "Perhatian",
@@ -202,7 +185,7 @@ const Proposal = () => {
           life: 2000,
         });
       } else {
-        setIsFirstChiefResearcherChange(false);
+        setIsChiefResearcherChange(false);
       }
     }
   }, [form.ketuaPeneliti]);
@@ -294,11 +277,40 @@ const Proposal = () => {
 
   const closeDialog = () => {
     setDialogVisible(false);
-    setIsFirstChiefResearcherChange(true);
+    setIsChiefResearcherChange(true);
     setErrors({});
   };
 
+  const validateFormWithZod = (data) => {
+    try {
+      proposalSchema.parse(data);
+      setErrors({});
+      return true;
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const formattedErrors = {};
+        error.errors.forEach((err) => {
+          const path = err.path[0];
+          formattedErrors[path] = err.message;
+        });
+        setErrors(formattedErrors);
+        return false;
+      }
+      console.error("Unexpected validation error:", error);
+      return false;
+    }
+  };
+
   const saveProposal = async () => {
+    if (!validateFormWithZod(form)) {
+      toast.current.show({
+        severity: "error",
+        summary: "Validasi Gagal",
+        detail: "Periksa kembali formulir Anda",
+      });
+      return;
+    }
+
     try {
       if (form.fileUrl && form.fileUrl.length > 0) {
         const file = form.fileUrl[0];
@@ -531,90 +543,6 @@ const Proposal = () => {
       >
         {selectedProposal && (
           <>
-            {/* <p>
-              <strong>Judul:</strong> {selectedProposal.judul}
-            </p>
-            <p>
-              <strong>Ketua Peneliti:</strong>{" "}
-              {selectedProposal.ketuaPeneliti.dosen.name}
-            </p>
-            <p>
-              <strong>Anggota Peneliti:</strong>{" "}
-              {selectedProposal.proposalMember
-                .filter(
-                  (pm) => pm.user.id !== selectedProposal.ketuaPeneliti.id
-                )
-                .map((pm) => {
-                  const name =
-                    pm.user.userType === "DOSEN_STAFF"
-                      ? pm.user.dosen?.name
-                      : pm.user.student?.name;
-
-                  const role =
-                    pm.roleInProposal === "ANGGOTA_DOSEN"
-                      ? " (Dosen)"
-                      : pm.roleInProposal === "ANGGOTA_MAHASISWA"
-                      ? " (Mahasiswa)"
-                      : "";
-
-                  return `${name}${role}`;
-                })
-                .join(", ")}
-            </p>
-            <p>
-              <strong>Nama Mitra:</strong> {selectedProposal.namaMitra}
-            </p>
-            <p>
-              <strong>Alamat Mitra:</strong> {selectedProposal.alamatMitra}
-            </p>
-            <p>
-              <strong>PIC Mitra:</strong> {selectedProposal.picMitra}
-            </p>
-            <p>
-              <strong>Sumber Dana:</strong> {selectedProposal.sumberDana}
-            </p>
-            <p>
-              <strong>Dana yang Diusulkan:</strong> Rp{" "}
-              {selectedProposal.danaYangDiUsulkan?.toLocaleString("id-ID")}
-            </p>
-            <p>
-              <strong>Luaran Penelitian:</strong>{" "}
-              {selectedProposal.luaranPenelitian}
-            </p>
-            <p>
-              <strong>File Proposal:</strong>{" "}
-              <a
-                href={selectedProposal.fileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 underline"
-              >
-                Lihat File
-              </a>
-            </p>
-            {(() => {
-              const isMember = selectedProposal?.proposalMember?.some(
-                (pm) => pm.user.id === userId && pm.status === "PENDING"
-              );
-              return (
-                <div className="flex gap-1 justify-end mt-3">
-                  <Button
-                    icon="pi pi-check"
-                    label="Terima"
-                    className="p-button-success mr-2"
-                    onClick={() => approveProposal(selectedProposal.id)}
-                    disabled={!isMember}
-                  />
-                  <Button
-                    icon="pi pi-times"
-                    label="Tolak"
-                    className="p-button-danger"
-                    onClick={() => rejectProposal(selectedProposal.id)}
-                    disabled={!isMember}
-                  />
-                </div>
-              );
-            })()} */}
             <div className="grid grid-cols-2">
               <div className="field">
                 <label className="font-bold block mb-1">Judul</label>
@@ -764,8 +692,9 @@ const Proposal = () => {
               value={form.judul}
               onChange={(e) => setForm({ ...form, judul: e.target.value })}
               rows={4}
-              className="w-full"
+              className={`w-full ${errors?.judul ? "p-invalid" : ""}`}
             />
+            {errors?.judul && <small className="p-error">{errors.judul}</small>}
           </div>
 
           <div className="field mb-3">
@@ -776,10 +705,13 @@ const Proposal = () => {
               options={chiefResearcherOptions}
               onChange={(e) => setForm({ ...form, ketuaPeneliti: e.value })}
               placeholder="Pilih Ketua Peneliti"
-              className={`w-full ${errors.role ? "p-invalid" : ""}`}
+              className={`w-full ${errors?.ketuaPeneliti ? "p-invalid" : ""}`}
               disabled={true}
               size="small"
             />
+            {errors?.ketuaPeneliti && (
+              <small className="p-error">{errors.ketuaPeneliti}</small>
+            )}
           </div>
 
           <div className="field">
@@ -791,9 +723,14 @@ const Proposal = () => {
               optionLabel="label"
               placeholder="Pilih Anggota Peneliti Dosen"
               maxSelectedLabels={2}
-              className="w-full md:w-20rem"
+              className={`w-full md:w-20rem ${
+                errors?.anggotaDosen ? "p-invalid" : ""
+              }`}
               size="small"
             />
+            {errors?.anggotaDosen && (
+              <small className="p-error">{errors.anggotaDosen}</small>
+            )}
           </div>
 
           <div className="field">
@@ -807,9 +744,14 @@ const Proposal = () => {
               optionLabel="label"
               placeholder="Pilih Anggota Peneliti Mahasiswa"
               maxSelectedLabels={2}
-              className="w-full md:w-20rem"
+              className={`w-full md:w-20rem ${
+                errors?.anggotaMahasiswa ? "p-invalid" : ""
+              }`}
               size="small"
             />
+            {errors?.anggotaMahasiswa && (
+              <small className="p-error">{errors.anggotaMahasiswa}</small>
+            )}
           </div>
 
           <div>
@@ -817,9 +759,12 @@ const Proposal = () => {
             <InputText
               value={form.namaMitra}
               onChange={(e) => setForm({ ...form, namaMitra: e.target.value })}
-              className="w-full"
+              className={`w-full ${errors?.namaMitra ? "p-invalid" : ""}`}
               size="small"
             />
+            {errors?.namaMitra && (
+              <small className="p-error">{errors.namaMitra}</small>
+            )}
           </div>
 
           <div>
@@ -829,9 +774,12 @@ const Proposal = () => {
               onChange={(e) =>
                 setForm({ ...form, alamatMitra: e.target.value })
               }
-              className="w-full"
+              className={`w-full ${errors?.alamatMitra ? "p-invalid" : ""}`}
               size="small"
             />
+            {errors?.alamatMitra && (
+              <small className="p-error">{errors.alamatMitra}</small>
+            )}
           </div>
 
           <div>
@@ -839,9 +787,12 @@ const Proposal = () => {
             <InputText
               value={form.picMitra}
               onChange={(e) => setForm({ ...form, picMitra: e.target.value })}
-              className="w-full"
+              className={`w-full ${errors?.picMitra ? "p-invalid" : ""}`}
               size="small"
             />
+            {errors?.picMitra && (
+              <small className="p-error">{errors.picMitra}</small>
+            )}
           </div>
 
           <div>
@@ -852,8 +803,13 @@ const Proposal = () => {
                 setForm({ ...form, waktuPelaksanaan: e.target.value })
               }
               dateFormat="dd/mm/yy"
-              className="w-full"
+              className={`w-full ${
+                errors?.waktuPelaksanaan ? "p-invalid" : ""
+              }`}
             />
+            {errors?.waktuPelaksanaan && (
+              <small className="p-error">{errors.waktuPelaksanaan}</small>
+            )}
           </div>
 
           <div>
@@ -861,9 +817,12 @@ const Proposal = () => {
             <InputText
               value={form.sumberDana}
               onChange={(e) => setForm({ ...form, sumberDana: e.target.value })}
-              className="w-full"
+              className={`w-full ${errors?.sumberDana ? "p-invalid" : ""}`}
               size="small"
             />
+            {errors?.sumberDana && (
+              <small className="p-error">{errors.sumberDana}</small>
+            )}
           </div>
 
           <div>
@@ -873,12 +832,34 @@ const Proposal = () => {
               onValueChange={(e) =>
                 setForm({ ...form, danaYangDiUsulkan: e.value })
               }
-              className="w-full"
+              className={`w-full ${
+                errors?.danaYangDiUsulkan ? "p-invalid" : ""
+              }`}
               inputClassName="w-full"
               mode="currency"
               currency="IDR"
               locale="id-ID"
             />
+            {errors?.danaYangDiUsulkan && (
+              <small className="p-error">{errors.danaYangDiUsulkan}</small>
+            )}
+          </div>
+
+          <div>
+            <label>Luaran Penelitian</label>
+            <InputTextarea
+              value={form.luaranPenelitian}
+              onChange={(e) =>
+                setForm({ ...form, luaranPenelitian: e.target.value })
+              }
+              rows={3}
+              className={`w-full ${
+                errors?.luaranPenelitian ? "p-invalid" : ""
+              }`}
+            />
+            {errors?.luaranPenelitian && (
+              <small className="p-error">{errors.luaranPenelitian}</small>
+            )}
           </div>
 
           <div>
@@ -896,93 +877,12 @@ const Proposal = () => {
               auto
               accept="application/pdf"
               chooseLabel="Pilih File"
+              className={errors?.fileUrl ? "p-invalid" : ""}
             />
+            {errors?.fileUrl && (
+              <small className="p-error">{errors.fileUrl}</small>
+            )}
           </div>
-
-          {/* <TabView>
-            <TabPanel header="Anggota Peneliti">
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <label>Anggota</label>
-                  <Button
-                    icon="pi pi-plus"
-                    onClick={addMemberRow}
-                    size="small"
-                    text
-                  />
-                </div>
-                {form.members.map((member, index) => (
-                  <div className="grid grid-cols-3 gap-2 mb-2" key={index}>
-                    <Dropdown
-                      value={member.member_type}
-                      options={memberTypeOptions}
-                      onChange={(e) =>
-                        updateMember(index, "member_type", e.value)
-                      }
-                      placeholder="Tipe"
-                      size="small"
-                    />
-                    <InputText
-                      value={member.member_id}
-                      onChange={(e) =>
-                        updateMember(index, "member_id", e.target.value)
-                      }
-                      placeholder="ID Anggota"
-                      size="small"
-                    />
-                    <Dropdown
-                      value={member.status}
-                      options={memberStatusOptions}
-                      onChange={(e) => updateMember(index, "status", e.value)}
-                      placeholder="Status"
-                      size="small"
-                    />
-                  </div>
-                ))}
-              </div>
-            </TabPanel>
-<TabPanel header="Reviewer">
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <label>Anggota</label>
-                  <Button
-                    icon="pi pi-plus"
-                    onClick={addMemberRow}
-                    size="small"
-                    text
-                  />
-                </div>
-                {form.members.map((member, index) => (
-                  <div className="grid grid-cols-3 gap-2 mb-2" key={index}>
-                    <Dropdown
-                      value={member.member_type}
-                      options={memberTypeOptions}
-                      onChange={(e) =>
-                        updateMember(index, "member_type", e.value)
-                      }
-                      placeholder="Tipe"
-                      size="small"
-                    />
-                    <InputText
-                      value={member.member_id}
-                      onChange={(e) =>
-                        updateMember(index, "member_id", e.target.value)
-                      }
-                      placeholder="ID Anggota"
-                      size="small"
-                    />
-                    <Dropdown
-                      value={member.status}
-                      options={memberStatusOptions}
-                      onChange={(e) => updateMember(index, "status", e.value)}
-                      placeholder="Status"
-                      size="small"
-                    />
-                  </div>
-                ))}
-              </div>
-            </TabPanel>
-          </TabView> */}
         </div>
       </Dialog>
     </div>
