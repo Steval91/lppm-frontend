@@ -18,7 +18,6 @@ import { useAuth } from "../contexts/AuthContext";
 import { getUsers } from "../api/user";
 import { getProposals } from "../api/proposal";
 import {
-  getProposalReviews,
   chooseReviewerApi,
   reviewerAcceptProposalReviewApi,
   reviewerRejectProposalReviewApi,
@@ -30,6 +29,7 @@ import {
 } from "../api/proposal-review";
 import { evaluationFormSchema } from "../validationSchemas/proposalEvaluationSchema";
 import { z } from "zod";
+import { downloadFile } from "../utils/downloadFile";
 
 const initialCriteria = [
   {
@@ -85,11 +85,10 @@ const initialCriteria = [
 export default function Review() {
   const toast = useRef(null);
 
-  const { user, loadingUser, fetchNotifications } = useAuth();
+  const { user, fetchNotifications } = useAuth();
   const userId = user?.id;
 
   const [proposals, setProposals] = useState([]);
-  const [proposalReviews, setProposalReviews] = useState([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [selectedProposal, setSelectedProposal] = useState(null);
   const [selectedReviewers, setSelectedReviewers] = useState([]);
@@ -100,64 +99,45 @@ export default function Review() {
   const [fileDialogVisible, setFileDialogVisible] = useState(false);
   const [errors, setErrors] = useState({});
 
-  useEffect(() => {
-    if (!loadingUser && user) {
-      fetchProposalReviews();
-    }
-  }, [loadingUser, user]);
-
-  const fetchProposalReviews = async () => {
+  const fetchProposals = async () => {
     try {
-      console.log("Fetching proposal reviews for user:", user.id);
       const res = await getProposals();
-      // const res = await getProposalReviews();
       setProposals(res.data);
     } catch (error) {
-      console.error("Gagal fetch proposal review:", error);
+      console.error("Gagal fetch proposal:", error);
     }
   };
 
   useEffect(() => {
-    fetchProposalReviews();
+    fetchProposals();
   }, []);
-
-  // const fetchProposals = async () => {
-  //   try {
-  //     const res = await getProposals();
-  //     setProposals(res.data);
-  //   } catch (error) {
-  //     console.error("Gagal fetch proposal:", error);
-  //   }
-  // };
-
-  // useEffect(() => {
-  //   fetchProposals();
-  // }, []);
 
   const filteredProposals = useMemo(() => {
     return proposals
       .filter((p) => {
-        const isResearchFacultyHead = user?.roles?.some(
-          (role) => role.name === "KETUA_PENELITIAN_FAKULTAS"
-        );
-        const isReviewer = user?.roles?.some(
-          (role) => role.name === "REVIEWER"
-        );
-        console.log("Research Faculty Head: ", isResearchFacultyHead);
-        console.log("Proposal status:", p.status);
+        // 1) user adalah ketua peneliti
+        if (p.ketuaPeneliti.id === userId) return true;
 
-        return !!(
-          (isResearchFacultyHead || isReviewer) &&
-          (p.status === "WAITING_FACULTY_HEAD" ||
-            p.status === "WAITING_REVIEWER_RESPONSE" ||
-            p.status === "REVIEW_IN_PROGRESS" ||
-            p.status === "REVIEW_COMPLETED" ||
-            p.status === "WAITING_DEAN_APPROVAL" ||
-            p.status === "WAITING_LPPM_APPROVAL" ||
-            p.status === "ONGOING")
-        );
-        // return !!(isResearchFacultyHead || isReviewer);
-        // return true; // Sementara, kembalikan semua proposalj
+        // 2) user ada di proposalMember
+        if (p.proposalMember.some((pm) => pm.user.id === userId)) return true;
+
+        // 3) user ada di proposalReviewer
+        if (p.proposalReviewer.some((pm) => pm.user.id === userId)) return true;
+
+        // 4) user adaalah ketua peneliti fakultas
+        if (
+          user?.roles?.some((role) => role.name === "KETUA_PENELITIAN_FAKULTAS")
+        )
+          return true;
+
+        // 5) user adalah dekan
+        if (user?.roles?.some((role) => role.name === "DEKAN")) return true;
+
+        // 6) user adalah ketua lppm
+        if (user?.roles?.some((role) => role.name === "KETUA_LPPM"))
+          return true;
+
+        return false;
       })
       .filter(
         (p) =>
@@ -220,7 +200,7 @@ export default function Review() {
       });
 
       setDialogVisible(false);
-      fetchProposalReviews(); // Refresh data proposal
+      fetchProposals(); // Refresh data proposal
       fetchNotifications(userId);
     } catch (error) {
       console.error("Gagal memilih reviewer:", error);
@@ -246,16 +226,7 @@ export default function Review() {
     try {
       const blob = await downloadApprovalSheetApi(proposalId);
 
-      const url = window.URL.createObjectURL(
-        new Blob([blob], { type: "application/pdf" })
-      );
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", "approval_sheet.pdf"); // nama file
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url); // optional cleanup
+      downloadFile(blob, "approval_sheet.pdf", "application/pdf");
     } catch (error) {
       console.error("Gagal download lembar pengesahan:", error);
     }
@@ -282,7 +253,7 @@ export default function Review() {
         detail: "Proposal disetujui",
       });
 
-      fetchProposalReviews();
+      fetchProposals();
       fetchNotifications(userId);
       setDialogVisible(false);
     } catch (error) {
@@ -301,7 +272,7 @@ export default function Review() {
         detail: "Proposal disetujui",
       });
 
-      fetchProposalReviews();
+      fetchProposals();
       fetchNotifications(userId);
       setDialogVisible(false);
     } catch (error) {
@@ -319,7 +290,7 @@ export default function Review() {
         summary: "Ditolak",
         detail: "Proposal ditolak",
       });
-      fetchProposalReviews();
+      fetchProposals();
       fetchNotifications(userId);
       setDialogVisible(false);
     } catch (error) {
@@ -407,7 +378,7 @@ export default function Review() {
       });
 
       fetchNotifications(userId);
-      fetchProposalReviews();
+      fetchProposals();
       setDialogVisible(false);
     } catch (error) {
       console.error("Gagal simpan proposal:", error);
@@ -756,9 +727,9 @@ export default function Review() {
             onHide={() => setFileDialogVisible(false)}
             maximizable
           >
-            {selectedProposal.fileUrl ? (
+            {selectedProposal?.fileBase64 ? (
               <iframe
-                src={selectedProposal.fileUrl}
+                src={`data:application/pdf;base64,${selectedProposal.fileBase64}`}
                 width="100%"
                 height="100%"
                 style={{ minHeight: "70vh", border: "none" }}
@@ -903,7 +874,7 @@ export default function Review() {
   return (
     <div className="p-4">
       <Toast ref={toast} />
-      <h2 className="text-xl font-bold mb-4">Review</h2>
+      <h2 className="text-2xl font-bold mb-5">Review</h2>
 
       <DataTable
         value={filteredProposals}
@@ -931,6 +902,35 @@ export default function Review() {
           field="ketuaPeneliti.dosen.name"
           header="Ketua Peneliti"
           sortable
+        />
+        <Column
+          field="proposalMember"
+          header="Anggota Peneliti"
+          sortable
+          body={(row) => (
+            <span>
+              {row.proposalMember
+                .filter((pm) => pm.user.id !== row.ketuaPeneliti.id)
+                .map((pm) =>
+                  pm.user.userType === "DOSEN_STAFF"
+                    ? pm.user.dosen?.name
+                    : `${pm.user.student?.name} (Mahasiswa)`
+                )
+                .join(", ")}
+            </span>
+          )}
+        />
+        <Column
+          field="proposalReviewer"
+          header="Reviewer"
+          sortable
+          body={(row) => (
+            <span>
+              {row.proposalReviewer
+                .map((pm) => pm.reviewer.dosen?.name)
+                .join(", ")}
+            </span>
+          )}
         />
         <Column field="waktuPelaksanaan" header="Waktu Pelaksanaan" sortable />
         <Column
