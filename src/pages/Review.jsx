@@ -122,7 +122,7 @@ export default function Review() {
         if (p.proposalMember.some((pm) => pm.user.id === userId)) return true;
 
         // 3) user ada di proposalReviewer
-        if (p.proposalReviewer.some((pm) => pm.user.id === userId)) return true;
+        if (p.proposalReviewer.some((pm) => pm.reviewer.id === userId)) return true;
 
         // 4) user adaalah ketua peneliti fakultas
         if (
