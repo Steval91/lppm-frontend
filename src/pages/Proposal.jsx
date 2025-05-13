@@ -31,6 +31,7 @@ import { Tag } from "primereact/tag";
 import { useAuth } from "../contexts/AuthContext";
 import { proposalSchema } from "../validationSchemas/proposalSchema";
 import { z } from "zod";
+import { formatDate, parseDate } from "../utils/date";
 
 // Proposal's status options:
 // DRAFT,
@@ -83,9 +84,6 @@ const Proposal = () => {
     proposalMember: [],
     anggotaDosen: [],
     anggotaMahasiswa: [],
-    members: [
-      { member_type: "MAHASISWA", member_id: "123", status: "PENDING" },
-    ],
   });
   const [errors, setErrors] = useState({});
   const [selectedProposal, setSelectedProposal] = useState(null);
@@ -212,9 +210,6 @@ const Proposal = () => {
       proposalMember: [],
       anggotaDosen: [],
       anggotaMahasiswa: [],
-      members: [
-        { member_type: "MAHASISWA", member_id: "123", status: "PENDING" },
-      ],
     });
     setErrors({});
     setDialogVisible(true);
@@ -229,31 +224,13 @@ const Proposal = () => {
           member.user.id !== proposal.ketuaPeneliti.id
       )
       .map((member) => member.user.dosen.id);
+    console.log("Anggota Dosen IDs:", anggotaDosenIds);
 
     // Filter anggota mahasiswa
     const anggotaMahasiswaIds = proposal.proposalMember
       .filter((member) => member.roleInProposal === "ANGGOTA_MAHASISWA")
       .map((member) => member.user.student.id);
-
-    // Konversi waktuPelaksanaan string ke Date object
-    const parseDate = (dateString) => {
-      if (!dateString) return null;
-
-      // Format dari API: "5/5/2025" (MM/DD/YYYY atau DD/MM/YYYY)
-      const parts = dateString.split("/");
-      if (parts.length === 3) {
-        // Asumsikan format DD/MM/YYYY
-        const day = parseInt(parts[0], 10);
-        const month = parseInt(parts[1], 10) - 1; // Bulan di JavaScript dimulai dari 0
-        const year = parseInt(parts[2], 10);
-
-        // Pastikan nilai valid
-        if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-          return new Date(year, month, day);
-        }
-      }
-      return null;
-    };
+    console.log("Anggota Mahasiswa IDs:", anggotaMahasiswaIds);
 
     setIsEditMode(true);
     setForm({
@@ -313,8 +290,7 @@ const Proposal = () => {
 
     try {
       if (form.waktuPelaksanaan)
-        form.waktuPelaksanaan =
-          form.waktuPelaksanaan.toLocaleDateString("id-ID");
+        form.waktuPelaksanaan = formatDate(form.waktuPelaksanaan);
 
       console.log(form);
       // return;
@@ -379,22 +355,6 @@ const Proposal = () => {
     fetchProposals();
   };
 
-  // const addMemberRow = () => {
-  //   setForm((prev) => ({
-  //     ...prev,
-  //     proposalMember: [
-  //       ...prev.proposalMember,
-  //       { member_type: "", member_id: "", status: "PENDING" },
-  //     ],
-  //   }));
-  // };
-
-  // const updateMember = (index, field, value) => {
-  //   const updatedMembers = [...form.proposalMember];
-  //   updatedMembers[index][field] = value;
-  //   setForm({ ...form, proposalMember: updatedMembers });
-  // };
-
   const approveProposal = async (proposalId) => {
     try {
       console.log(proposalId, user.id);
@@ -432,7 +392,7 @@ const Proposal = () => {
 
   return (
     <div className="p-4">
-      <div className="text-2xl font-semibold mb-5">Kelola Proposal</div>
+      <div className="text-2xl font-semibold mb-5">Proposal</div>
       <Toast ref={toast} />
       <ConfirmDialog />
       <div className="card">
@@ -655,9 +615,9 @@ const Proposal = () => {
         onHide={() => setFileDialogVisible(false)}
         maximizable
       >
-        {selectedProposal?.fileUrl ? (
+        {selectedProposal?.fileBase64 ? (
           <iframe
-            src={selectedProposal?.fileUrl}
+            src={`data:application/pdf;base64,${selectedProposal.fileBase64}`}
             width="100%"
             height="100%"
             style={{ minHeight: "70vh", border: "none" }}
