@@ -8,8 +8,8 @@ const menuItems = [
   // { label: "Dashboard", path: "/", icon: "pi pi-th-large" },
   // { label: "Proposal Saya", path: "/my-proposals", icon: "pi pi-book" },
   // { label: "Pengajuan", path: "/proposals", icon: "pi pi-user-edit" },
-  { label: "Pengajuan", path: "/proposals", icon: "pi pi-book" },
-  { label: "Penilaian", path: "/reviews", icon: "pi pi-user-edit" },
+  { label: "Proposal", path: "/proposals", icon: "pi pi-book" },
+  { label: "Review", path: "/reviews", icon: "pi pi-user-edit" },
   // { label: "Persetujuan", path: "/approvals", icon: "pi pi-check-square" },
   // {
   //   label: "Laporan Progres",
