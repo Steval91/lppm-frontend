@@ -261,7 +261,7 @@ const Proposal = () => {
       judul: proposal.judul,
       waktuPelaksanaan: parseDate(proposal.waktuPelaksanaan),
       sumberDana: proposal.sumberDana,
-      danaYangDiUsulkan: proposal.danaYangDiUsulkan,
+      danaYangDiUsulkan: parseInt(proposal.danaYangDiUsulkan),
       fileUrl: proposal.fileUrl,
       luaranPenelitian: proposal.luaranPenelitian,
       namaMitra: proposal.namaMitra,
@@ -312,18 +312,6 @@ const Proposal = () => {
     }
 
     try {
-      if (form.fileUrl && form.fileUrl.length > 0) {
-        const file = form.fileUrl[0];
-
-        const formData = new FormData();
-        formData.append("file", file);
-
-        const res = await uploadProposalFile(formData);
-        const fileUrl = res.data;
-        console.log("File URL:", fileUrl);
-        form.fileUrl = fileUrl;
-      }
-
       if (form.waktuPelaksanaan)
         form.waktuPelaksanaan =
           form.waktuPelaksanaan.toLocaleDateString("id-ID");
@@ -339,6 +327,18 @@ const Proposal = () => {
           detail: "Proposal diperbarui",
         });
       } else {
+        if (form.fileUrl && form.fileUrl.length > 0) {
+          const file = form.fileUrl[0];
+
+          const formData = new FormData();
+          formData.append("file", file);
+
+          const res = await uploadProposalFile(formData);
+          const fileUrl = res.data;
+          console.log("File URL:", fileUrl);
+          form.fileUrl = fileUrl;
+        }
+
         await createProposal(form);
         toast.current.show({
           severity: "success",
