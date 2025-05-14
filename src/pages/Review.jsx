@@ -16,7 +16,7 @@ import { InputNumber } from "primereact/inputnumber";
 import { Tooltip } from "primereact/tooltip";
 import { useAuth } from "../contexts/AuthContext";
 import { getUsers } from "../api/user";
-import { getProposals } from "../api/proposal";
+import { getProposalByProposalId, getProposals } from "../api/proposal";
 import {
   chooseReviewerApi,
   reviewerAcceptProposalReviewApi,
@@ -122,7 +122,8 @@ export default function Review() {
         if (p.proposalMember.some((pm) => pm.user.id === userId)) return true;
 
         // 3) user ada di proposalReviewer
-        if (p.proposalReviewer.some((pm) => pm.reviewer.id === userId)) return true;
+        if (p.proposalReviewer.some((pm) => pm.reviewer.id === userId))
+          return true;
 
         // 4) user adaalah ketua peneliti fakultas
         if (
@@ -170,10 +171,18 @@ export default function Review() {
         });
 
         setReviewerOptions(
-          filteredReviewers.map((reviewer) => ({
-            label: reviewer.dosen?.name || reviewer.username,
-            value: reviewer.id,
-          }))
+          filteredReviewers
+            .filter((reviewer) => {
+              const isRejected = selectedProposal.proposalReviewer.some(
+                (pr) =>
+                  pr.status === "REJECTED" && pr.reviewer.id === reviewer.id
+              );
+              return !isRejected;
+            })
+            .map((reviewer) => ({
+              label: reviewer.dosen?.name || reviewer.username,
+              value: reviewer.id,
+            }))
         );
       } catch (error) {
         console.error("Gagal fetch reviewers:", error);
@@ -207,19 +216,27 @@ export default function Review() {
     }
   };
 
-  const showDialog = (proposal, mode) => {
-    setSelectedProposal(proposal);
-    setDialogMode(mode);
-    setDialogVisible(true);
-
+  const showDialog = async (proposal, mode) => {
     if (mode === "reviewer") {
       setDialogHeader("Pilih Reviewer");
       setSelectedReviewers([]);
     } else if (mode === "proposal_verification") {
       setDialogHeader("Penilain Proposal");
     } else if (mode === "proposal_detail") {
+      try {
+        const res = await getProposalByProposalId(proposal.id);
+        const data = res.data;
+
+        proposal.fileBase64 = data.fileBase64;
+      } catch (error) {
+        console.error("Gagal fetch users:", error);
+      }
       setDialogHeader("Detail Proposal");
     }
+
+    setSelectedProposal(proposal);
+    setDialogMode(mode);
+    setDialogVisible(true);
   };
 
   const downloadApprovalSheet = async (proposalId) => {
@@ -564,17 +581,19 @@ export default function Review() {
               <div className="field mt-3">
                 <label className="font-bold block mb-1">Reviewer</label>
                 <div className="flex flex-wrap gap-2 mt-1">
-                  {selectedProposal.proposalReviewer.map((pr, index) => {
-                    const name = pr.reviewer?.dosen?.name;
-                    return (
-                      <Tag
-                        key={index}
-                        value={`${name} `}
-                        severity={"info"}
-                        className="mr-1 mb-2"
-                      />
-                    );
-                  })}
+                  {selectedProposal.proposalReviewer
+                    .filter((pr) => pr.status !== "REJECTED")
+                    .map((pr, index) => {
+                      const name = pr.reviewer?.dosen?.name;
+                      return (
+                        <Tag
+                          key={index}
+                          value={`${name} `}
+                          severity={"info"}
+                          className="mr-1 mb-2"
+                        />
+                      );
+                    })}
                 </div>
               </div>
             )}
@@ -927,6 +946,7 @@ export default function Review() {
           body={(row) => (
             <span>
               {row.proposalReviewer
+                .filter((pr) => pr.status !== "REJECTED")
                 .map((pm) => pm.reviewer.dosen?.name)
                 .join(", ")}
             </span>
