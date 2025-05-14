@@ -9,6 +9,7 @@ import {
   deleteProposal as deleteProposalApi,
   approveProposalApi,
   rejectProposalApi,
+  getProposalByProposalId,
 } from "../api/proposal";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
@@ -188,7 +189,16 @@ const Proposal = () => {
     }
   }, [form.ketuaPeneliti]);
 
-  const openDetailProposalDialog = (proposal) => {
+  const openDetailProposalDialog = async (proposal) => {
+    try {
+      const res = await getProposalByProposalId(proposal.id);
+      const data = res.data;
+
+      proposal.fileBase64 = data.fileBase64;
+    } catch (error) {
+      console.error("Gagal fetch users:", error);
+    }
+
     setSelectedProposal(proposal);
     setProposalDetailDialogVisible(true);
   };
@@ -473,21 +483,23 @@ const Proposal = () => {
                     className="p-button-text"
                     onClick={() => openDetailProposalDialog(row)}
                   />
-                  {userId === row.ketuaPeneliti.id && (
-                    <>
-                      <Button
-                        icon="pi pi-pencil"
-                        className="p-button-text"
-                        onClick={() => openEditDialog(row)}
-                      />
-                      <Button
-                        icon="pi pi-trash"
-                        severity="danger"
-                        className="p-button-text"
-                        onClick={() => confirmDelete(row)}
-                      />
-                    </>
-                  )}
+                  {userId === row.ketuaPeneliti.id &&
+                    row.proposalDecision?.status ===
+                      "ACCEPTED_WITH_REVISION" && (
+                      <>
+                        <Button
+                          icon="pi pi-pencil"
+                          className="p-button-text"
+                          onClick={() => openEditDialog(row)}
+                        />
+                        <Button
+                          icon="pi pi-trash"
+                          severity="danger"
+                          className="p-button-text"
+                          onClick={() => confirmDelete(row)}
+                        />
+                      </>
+                    )}
                 </div>
               );
             }}
