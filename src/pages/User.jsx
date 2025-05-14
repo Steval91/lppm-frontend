@@ -298,6 +298,18 @@ const User = () => {
             selectionMode="multiple"
             headerStyle={{ width: "3rem" }}
           ></Column> */}
+          <Column
+            field="name"
+            header="Nama"
+            sortable
+            body={(row) => (
+              <span>
+                {row.userType === "DOSEN_STAFF"
+                  ? row.dosen?.name
+                  : row.student?.name}
+              </span>
+            )}
+          />
           <Column field="userType" header="Tipe Pengguna" sortable />
           <Column field="username" header="Username" sortable />
           <Column field="email" header="Email" sortable />
