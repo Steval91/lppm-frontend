@@ -6,7 +6,7 @@ import { z } from "zod";
 const proposalSchema = z.object({
   judul: z.string().min(1, "Judul proposal wajib diisi"),
   ketuaPeneliti: z.number().min(1, "Ketua Peneliti wajib dipilih"),
-  anggotaDosen: z.array(z.number()).min(1, "Minimal 1 Anggota Dosen"),
+  anggotaDosen: z.array(z.number()).optional(),
   anggotaMahasiswa: z.array(z.number()).optional(),
   waktuPelaksanaan: z.preprocess(
     (val) => {
