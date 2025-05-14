@@ -10,6 +10,11 @@ export const getProposalsByUserId = (userId) =>
     "ngrok-skip-browser-warning": "any-value",
   }).get(`/proposals/user/${userId}`);
 
+export const getProposalByProposalId = (proposalId) =>
+  customApi({
+    "ngrok-skip-browser-warning": "any-value",
+  }).get(`/proposals/${proposalId}`);
+
 export const getUsers = () =>
   customApi({
     "ngrok-skip-browser-warning": "any-value",
