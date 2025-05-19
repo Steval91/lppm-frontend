@@ -30,6 +30,8 @@ import {
 import { evaluationFormSchema } from "../validationSchemas/proposalEvaluationSchema";
 import { z } from "zod";
 import { downloadFile } from "../utils/downloadFile";
+import { formatRupiah } from "../utils/currency";
+import { format } from "date-fns";
 
 const initialCriteria = [
   {
@@ -558,9 +560,7 @@ export default function Review() {
             <label className="font-bold block mb-1">Pendanaan</label>
             <p>Sumber: {selectedProposal.sumberDana || "-"}</p>
             <p>
-              Dana: Rp{" "}
-              {selectedProposal.danaYangDiUsulkan?.toLocaleString("id-ID") ||
-                "0"}
+              Dana: {formatRupiah(selectedProposal.danaYangDiUsulkan) || "-"}
             </p>
           </div>
           <div className="field mt-3">
@@ -956,7 +956,7 @@ export default function Review() {
         <Column
           field="danaYangDiUsulkan"
           header="Dana"
-          body={(row) => `Rp ${row.danaYangDiUsulkan?.toLocaleString()}`}
+          body={(row) => formatRupiah(row.danaYangDiUsulkan)}
         />
         <Column field="status" header="Status" />
         <Column

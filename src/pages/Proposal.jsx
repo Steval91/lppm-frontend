@@ -33,6 +33,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { proposalSchema } from "../validationSchemas/proposalSchema";
 import { z } from "zod";
 import { formatDate, parseDate } from "../utils/date";
+import { formatRupiah } from "../utils/currency";
 
 // Proposal's status options:
 // DRAFT,
@@ -47,8 +48,11 @@ import { formatDate, parseDate } from "../utils/date";
 // LPPM_APPROVED,
 // ONGOING,
 // PROGRESS_REPORT_SUBMITTED,
-// PROGRESS_APPROVED,
+// PROGRESS_APPROVED_BY_RESEARCH_FACULTY_HEAD,
+// PROGRESS_APPROVED_BY_DEAN,
+// PROGRESS_APPROVED_BY_LPPM,
 // FINAL_REPORT_SUBMITTED,
+// FINAL_APPROVED_BY_RESEARCH_FACULTY_HEAD,
 // FINAL_APPROVED_BY_DEAN,
 // FINAL_APPROVED_BY_LPPM,
 // COMPLETED
@@ -470,7 +474,7 @@ const Proposal = () => {
           <Column
             field="danaYangDiUsulkan"
             header="Dana"
-            body={(row) => `Rp ${row.danaYangDiUsulkan?.toLocaleString()}`}
+            body={(row) => formatRupiah(row.danaYangDiUsulkan)}
           />
           <Column field="status" header="Status" />
           <Column
@@ -570,10 +574,8 @@ const Proposal = () => {
                 <label className="font-bold block mb-1">Pendanaan</label>
                 <p>Sumber: {selectedProposal.sumberDana || "-"}</p>
                 <p>
-                  Dana: Rp{" "}
-                  {selectedProposal.danaYangDiUsulkan?.toLocaleString(
-                    "id-ID"
-                  ) || "0"}
+                  Dana:{" "}
+                  {formatRupiah(selectedProposal.danaYangDiUsulkan) || "-"}
                 </p>
               </div>
 
