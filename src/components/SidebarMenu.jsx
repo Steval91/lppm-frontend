@@ -11,12 +11,12 @@ const menuItems = [
   { label: "Proposal", path: "/proposals", icon: "pi pi-book" },
   { label: "Review", path: "/reviews", icon: "pi pi-user-edit" },
   // { label: "Persetujuan", path: "/approvals", icon: "pi pi-check-square" },
-  // {
-  //   label: "Laporan Progres",
-  //   path: "/progress-reports",
-  //   icon: "pi pi-directions",
-  // },
-  // { label: "Laporan Akhir", path: "/final-reports", icon: "pi pi-flag" },
+  {
+    label: "Laporan Progres",
+    path: "/progress-reports",
+    icon: "pi pi-directions",
+  },
+  { label: "Laporan Akhir", path: "/final-reports", icon: "pi pi-flag" },
   // { label: "Penelitian", path: "/research", icon: "pi pi-list" },
 ];
 
@@ -31,7 +31,7 @@ const SidebarMenu = () => {
 
   return (
     <div className="w-72 bg-white shadow-sm flex flex-col">
-      <div className="p-4 text-2xl font-bold">LPPM UNKLAB</div>
+      <div className="p-4 text-2xl font-bold"></div>
 
       <div className="flex-1 overflow-y-auto">
         {!isAdmin && (

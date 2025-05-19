@@ -14,6 +14,7 @@ import User from "./pages/User";
 import Faculty from "./pages/Faculty";
 import FacultyHeadDashboard from "./pages/FacultyHeadDashboard";
 import ReviewerDashboard from "./pages/ReviewerDashboard";
+import ProgressReport from "./pages/ProgressReport";
 
 const App = () => {
   return (
@@ -76,7 +77,7 @@ const App = () => {
             </AdminRoute>
           }
         />
-        <Route path="progress-reports" element={<FacultyHeadDashboard />} />
+        <Route path="progress-reports" element={<ProgressReport />} />
         <Route path="final-reports" element={<ReviewerDashboard />} />
         <Route path="research" element={<Review />} />
       </Route>
