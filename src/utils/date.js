@@ -34,3 +34,28 @@ export function parseDate(dateString) {
 
   return null;
 }
+
+/**
+ * Mengonversi objek Date menjadi string tahun (format "YYYY").
+ * Cocok untuk Calendar PrimeReact dengan view="year".
+ * @param {Date|null|undefined} date - Objek Date.
+ * @returns {string} - Tahun sebagai string, atau string kosong jika tidak valid.
+ */
+export function formatYear(date) {
+  if (!(date instanceof Date) || isNaN(date.getTime())) return "";
+  return String(date.getFullYear());
+}
+
+/**
+ * Mengonversi string tahun (format "YYYY") menjadi objek Date.
+ * Hanya digunakan untuk view="year" di PrimeReact Calendar.
+ * @param {string} yearString - Tahun dalam bentuk string.
+ * @returns {Date|null} - Objek Date dengan tanggal 1 Januari tahun tersebut, atau null jika tidak valid.
+ */
+export function parseYearString(yearString) {
+  const year = parseInt(yearString, 10);
+  if (!isNaN(year)) {
+    return new Date(year, 0, 1); // 1 Januari
+  }
+  return null;
+}
